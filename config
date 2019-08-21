@@ -1,0 +1,4 @@
+NAME=bpm-psd
+PORT=9024
+USER=softioc
+HOST=physics03
