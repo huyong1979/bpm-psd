@@ -14,7 +14,7 @@ scriptlaunch_registerRecordDeviceDriver(pdbbase)
 dbLoadRecords("/usr/lib/epics/db/iocAdminSoft.db", "IOC=SR-APHLA{IOC:BPMPSD}")
 dbLoadRecords ("/usr/lib/epics/db/save_restoreStatus.db", "P=SR-APHLA{IOC:BPMPSD}")
 dbLoadTemplate("psd.substitutions")
-dbLoadRecords("psd-misc.db")
+dbLoadRecords("psdMisc.db")
 
 save_restoreSet_status_prefix("SR-APHLA{IOC:BPMPSD}")
 set_savefile_path("./as", "/save")

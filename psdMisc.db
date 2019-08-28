@@ -1,11 +1,19 @@
 record(bo, "SR-APHLA{BPM}PSD-Cmd") {
    field(DTYP,"Launcher")
-   field(OUT, "@python /epics/iocs/bpm-psd/bpm-psd.py")
+   field(OUT, "@python /epics/iocs/bpm-psd/bpm_psd.py")
    field(VAL, "0")
    field(ZNAM,"Idle")
    field(ONAM,"Setting")
    #field(HIGH,"20")
    field(SCAN,"60 second")
+}
+
+record(bi, "SR-APHLA{BPM}PSD:Trigger-Sts") {
+    field(DESC,"trigger status")
+    field(PINI,"YES")
+    field(ZNAM,"Not triggered")
+    field(ONAM,"triggered")
+    field(VAL, "0")
 }
 
 record(waveform, "SR-APHLA{BPM}PSD:Status-Wf") {
@@ -21,6 +29,7 @@ record(calcout,"SR-APHLA{BPM}PSD:Counter-Calc_") {
 }
 record(longin,"SR-APHLA{BPM}PSD:Counter-I") {
    field(DESC,"number of missing calculations")
+   field(PINI,"YES")
 }
 
 record(bo, "SR-APHLA{BPM}PSD:LiveData-Cmd") {
@@ -56,15 +65,54 @@ record(ao, "SR-APHLA{BPM}PSD:PromY-SP") {
    field(PREC, "3")
    info(autosaveFields_pass0, "VAL")
 }
+record(ao, "SR-APHLA{BPM}PSD:PromDist-SP") {
+   field(DESC,"prominence distance")
+   field(PINI,"YES")
+   field(VAL, "0.5")
+   field(EGU, "Hz")
+   field(PREC,"1")
+   info(autosaveFields_pass0, "VAL")
+}
 
-record(longout, "SR-APHLA{BPM}PSD:StarFreq-SP") {
+record(ao, "SR-APHLA{BPM}PSD:StartFreq-SP") {
    field(DESC, "for int. PSD mean")
    field(PINI,"YES")
+   field(PREC,"1")
    field(VAL, "10")
-   field(DRVH,"10000")
-   field(DRVL,"1")
+   field(DRVH,"5000")
+   field(DRVL,"0.1")
+   field(HOPR, "5000")
+   field(LOPR, "0.1")
    field(EGU, "Hz")
-   info(autosaveFields_pass0, "VAL DRVH DRVL")
+   info(autosaveFields_pass0, "VAL DRVH DRVL HOPR LOPR")
+}
+
+record(ao,"SR-APHLA{BPM}PSD:Freq0-SP")
+{
+    field(DESC,"for finding peaks")
+    field(PINI,"YES")
+    field(PREC,"1")
+    field(EGU, "Hz")
+    field(VAL, "0.1")
+    field(DRVH,"5000")
+    field(DRVL,"0.09")
+    field(HOPR,"5000")
+    field(LOPR,"0.09")
+    info(autosaveFields_pass0, "VAL DRVL DRVH HOPR LOPR")
+}
+
+record(ao,"SR-APHLA{BPM}PSD:Freq1-SP")
+{
+    field(DESC,"for finding peaks")
+    field(PINI,"YES")
+    field(PREC,"1")
+    field(EGU, "Hz")
+    field(VAL, "5000")
+    field(DRVH,"5000")
+    field(DRVL,"0.09")
+    field(HOPR,"5000")
+    field(LOPR,"0.09")
+    info(autosaveFields_pass0, "VAL DRVL DRVH HOPR LOPR")
 }
 
 record(waveform, "SR-APHLA{BPM}Freq-Wf") {
@@ -463,7 +511,7 @@ record(subArray,"SR-APHLA{BPM}PSD:X_NON_DISP_MEAN_PKS_N_F-P2")
    field(PREC, "1")
    field(FLNK, "SR-APHLA{BPM}PSD:X_NON_DISP_MEAN_PKS_N_F-P3")
 }
-record(subArray,"SR-APHLA{BPM}PSD:NON_X_DISP_MEAN_PKS_N_F-P3")
+record(subArray,"SR-APHLA{BPM}PSD:X_NON_DISP_MEAN_PKS_N_F-P3")
 {
    field(DESC,"4th peak")
    field(INP, "SR-APHLA{BPM}PSD:X_NON_DISP_MEAN_PKS_N_F-Wf")

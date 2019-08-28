@@ -15,6 +15,7 @@ import matplotlib.pyplot as plt
 from scipy.signal import find_peaks
 import traceback
 import h5py
+import math
 #import operator
 #import heapq
 
@@ -24,6 +25,8 @@ import h5py
 #create prefix lists for BPM and PSD PVs
 prefix = []
 psdPrefix = []#yhu
+hPVs = [] #yhu: for invalid horizontal BPMs
+vPVs = []
 #regular BPMs: 6*30
 p_index = ['1','2','3','4','5','6']
 Cell_index =['30','01','02','03','04','05','06','07','08','09','10','11','12','13','14','15',
@@ -32,25 +35,33 @@ for i in Cell_index:
     for j in p_index:
         prefix.append('SR:C'+i+'-BI{BPM:'+j+'}')
         psdPrefix.append('SR:C'+i+'-APHLA{BPM:'+j+'}')
+        hPVs.append('SR:C'+i+'-APHLA{BPM:'+j+'}'+'PSD:BadX-Cmd')
+        vPVs.append('SR:C'+i+'-APHLA{BPM:'+j+'}'+'PSD:BadY-Cmd')
 #ID BPMs
-p_index=['7','8','9','10']
+p_index  = ['7','8','9','10']
 Cell_index=['04','07','12','19']
 for i in Cell_index:
     for j in p_index:
         prefix.append('SR:C'+i+'-BI{BPM:'+j+'}')
         psdPrefix.append('SR:C'+i+'-APHLA{BPM:'+j+'}')
+        hPVs.append('SR:C'+i+'-APHLA{BPM:'+j+'}'+'PSD:BadX-Cmd')
+        vPVs.append('SR:C'+i+'-APHLA{BPM:'+j+'}'+'PSD:BadY-Cmd')
 p_index=['7','8']
 Cell_index=['02','03','08','10','11','16','18','21','28']
 for i in Cell_index:
     for j in p_index:
         prefix.append('SR:C'+i+'-BI{BPM:'+j+'}')
         psdPrefix.append('SR:C'+i+'-APHLA{BPM:'+j+'}')
+        hPVs.append('SR:C'+i+'-APHLA{BPM:'+j+'}'+'PSD:BadX-Cmd')
+        vPVs.append('SR:C'+i+'-APHLA{BPM:'+j+'}'+'PSD:BadY-Cmd')
 p_index=['7','8','9']
 Cell_index=['05','17','23']
 for i in Cell_index:
     for j in p_index:
         prefix.append('SR:C'+i+'-BI{BPM:'+j+'}')
         psdPrefix.append('SR:C'+i+'-APHLA{BPM:'+j+'}')
+        hPVs.append('SR:C'+i+'-APHLA{BPM:'+j+'}'+'PSD:BadX-Cmd')
+        vPVs.append('SR:C'+i+'-APHLA{BPM:'+j+'}'+'PSD:BadY-Cmd')
 
 #a few small functions
 def just_print(message):
@@ -104,7 +115,7 @@ if caget('SR-APHLA{BPM}PSD:LiveData-Cmd') == 1:
         print_and_exit("No beam, no calculation")
     if caget('INJ{TOC}OpControl-Sel')==2 and caget('INJ{TOC-SM}Cnt:Next-I')<20:    
         caput('SR-APHLA{BPM}PSD:Counter-Calc_.PROC', 1)
-        print_and_exit("Top-off injection is coming with 20-sec so no calculation")
+        print_and_exit("Top-off injection is coming within 20-sec so no calculation")
 
     check_settings(MachineType, 5)
     check_settings(TrigSrc, 1)
@@ -164,7 +175,8 @@ n_max = 5 # max n peaks
 # prominence for finding x peaks (um^2/Hz)
 (prom_x, prom_y) = caget(['SR-APHLA{BPM}PSD:PromX-SP','SR-APHLA{BPM}PSD:PromY-SP']) 
 #print prom_x, prom_y
-dist = 5 # dist between peaks
+prom_dist = caget('SR-APHLA{BPM}PSD:PromDist-SP')# dist between peaks (Hz)
+#print prom_dist
 
 # pre-allowcate output
 Pxx_all = []
@@ -177,6 +189,7 @@ pks_n_freq_x = [0]*r
 pks_n_freq_y = [0]*r
 pks_n_hight_x = [0]*r
 pks_n_hight_y = [0]*r
+f_pks_0, f_pks_1 = caget(['SR-APHLA{BPM}PSD:Freq0-SP', 'SR-APHLA{BPM}PSD:Freq1-SP'])
 
 #main loop: PSD calculation
 for i in range(0,r):
@@ -184,7 +197,19 @@ for i in range(0,r):
     y = y_all[i] 
     # ---------------- horizontal ------------------
     f, P = signal.welch(x, fs, window='hann', nperseg = c)
+    i0 = np.where(f>=f_pks_0)
+    if f_pks_1 > max(f):
+        f_pks_1 = max(f)
+    i1 = np.where(f>=f_pks_1)
+    i0 = i0[0][0]
+    i1 = i1[0][0]
+    #print i0
+    #print i1
+
     Pxx_all = np.append(Pxx_all, P) # in 1D
+    df = f[1]-f[0] #~0.1Hz
+    dist = int(math.ceil(prom_dist/df))
+    #print dist
     # find peaks of individual BPM's psd; no PVs for these peaks
     loc, _ = find_peaks(P, prominence = prom_x, distance = dist)
     pks = P[loc]
@@ -216,6 +241,7 @@ for i in range(0,r):
     pks_n_hight_y[i] = pks[loc_n] # n max pks hight
 #t = time.time() - t0
 #print "checkpoint after loop t = %.f" % (t)
+print dist
 
 #caput results
 # reshape psd (1D -> 2D)
@@ -229,8 +255,18 @@ caput(PSD_X, np.sqrt(Pxx_all_4ca[0:r,1:])) #PSD of individual BPM
 caput(PSD_Y, np.sqrt(Pyy_all_4ca[0:r,1:]))
 caput('SR-APHLA{BPM}Freq-Wf', f[1:]) #skip f[0] which is 0 (DC)
 # disp, non disp, insertion device (id)
-badx = []
-bady = [101,125] # start from 0
+badx = [] #bad BPM x
+bady = [] #[101,125] # start from 0
+hValues = caget(hPVs)#len(hValues): 223
+vValues = caget(vPVs)
+for i in range(len(hValues)):
+    if hValues[i] == 1:
+        badx.append(i) 
+    if vValues[i] == 1:
+        bady.append(i) 
+print badx
+print bady
+
 Pxx_non_disp = Pxx_all[:,non_disp] # no PVs for this
 Pxx_disp = Pxx_all[:,disp]
 Pxx_id = Pxx_all[:,180:r+1]
@@ -238,14 +274,22 @@ Pyy = Pyy_all[:,0:180]
 Pyy = np.delete(Pyy,bady,1)
 Pyy_id = Pyy_all[:,180:r+1]
 
+# start frequency for integrating
+sf = caget("SR-APHLA{BPM}PSD:StartFreq-SP")#start freq for integral PSD
+Isf = np.where(f>=sf)
+Isf = Isf[0][0]
+f_int = f[Isf:]
+
 # find integrated PSD (2D)
+caput('SR-APHLA{BPM}Freq-Wf_', f_int)# frequency for integral PSD
 df = f[1]-f[0] #~0.1Hz
-int_Pxx_all = np.sqrt(np.cumsum(Pxx_all, axis = 0)*df)
-int_Pyy_all = np.sqrt(np.cumsum(Pyy_all, axis = 0)*df)
+int_Pxx_all = np.sqrt(np.cumsum(Pxx_all[Isf:], axis = 0)*df)
+int_Pyy_all = np.sqrt(np.cumsum(Pyy_all[Isf:], axis = 0)*df)
 int_Pxx_all_4ca = np.transpose(int_Pxx_all)
 int_Pyy_all_4ca = np.transpose(int_Pyy_all)
 caput(PSD_INTX, int_Pxx_all_4ca[0:r,1:])
 caput(PSD_INTY, int_Pyy_all_4ca[0:r,1:])
+
 int_Pxx_non_disp = np.sqrt(np.cumsum(Pxx_non_disp, axis = 0)*df) # no PVs for this
 int_Pxx_disp = np.sqrt(np.cumsum(Pxx_disp, axis = 0)*df)
 int_Pxx_id = np.sqrt(np.cumsum(Pxx_id, axis = 0)*df)
@@ -264,11 +308,6 @@ values = [np.sqrt(Pxx_disp_mean)[1:],np.sqrt(Pxx_non_disp_mean)[1:],np.sqrt(Pxx_
 caput(pvs, values)
 
 # find int. PSD mean
-sf = caget("SR-APHLA{BPM}PSD:StarFreq-SP")#start freq for integral PSD
-Isf = np.where(f>=sf)
-Isf = Isf[0][0]
-f_int = f[Isf:]
-caput('SR-APHLA{BPM}Freq-Wf_', f_int)# frequency for integral PSD
 int_Pxx_disp_mean = np.sqrt(np.cumsum(Pxx_disp_mean[Isf:])*df)
 int_Pxx_non_disp_mean = np.sqrt(np.cumsum(Pxx_non_disp_mean[Isf:])*df)
 int_Pxx_id_mean = np.sqrt(np.cumsum(Pxx_id_mean[Isf:])*df)
@@ -276,7 +315,7 @@ int_Pyy_mean = np.sqrt(np.cumsum(Pyy_mean[Isf:])*df)
 int_Pyy_id_mean = np.sqrt(np.cumsum(Pyy_id_mean[Isf:])*df)
 pvs = ['SR-APHLA{BPM}PSD:IntX_DISP_MEAN-Wf','SR-APHLA{BPM}PSD:IntX_NON_DISP_MEAN-Wf',
 'SR-APHLA{BPM}PSD:IntX_ID_MEAN-Wf','SR-APHLA{BPM}PSD:IntY_MEAN-Wf','SR-APHLA{BPM}PSD:IntY_ID_MEAN-Wf']
-values = [int_Pxx_disp_mean[1:],int_Pxx_non_disp_mean[1:],int_Pxx_id_mean[1:],int_Pyy_mean[1:],int_Pyy_id_mean[1:]]
+values = [int_Pxx_disp_mean,int_Pxx_non_disp_mean,int_Pxx_id_mean,int_Pyy_mean,int_Pyy_id_mean]
 caput(pvs, values)
 
 # find int. PSD of specific ranges of frequency
@@ -388,14 +427,14 @@ pvs = ['SR-APHLA{BPM}PSD:X_DISP_MEAN_PKS_N_F-Wf','SR-APHLA{BPM}PSD:X_DISP_MEAN_P
 'SR-APHLA{BPM}PSD:Y_ID_MEAN_PKS_N_F-Wf','SR-APHLA{BPM}PSD:Y_ID_MEAN_PKS_N_H-Wf']
 #print len(Pxx_disp_mean_pks_n_freq)
 #print len(Pyy_id_mean_pks_n_hight)
-values = [Pxx_disp_mean_pks_n_freq,Pxx_disp_mean_pks_n_hight,Pxx_non_disp_mean_pks_n_freq,Pxx_non_disp_mean_pks_n_hight,
-Pxx_id_mean_pks_n_freq,Pxx_id_mean_pks_n_hight,Pyy_mean_pks_n_freq,Pyy_mean_pks_n_hight,Pyy_id_mean_pks_n_freq,Pyy_id_mean_pks_n_hight]
+values = [Pxx_disp_mean_pks_n_freq,np.sqrt(Pxx_disp_mean_pks_n_hight),Pxx_non_disp_mean_pks_n_freq,np.sqrt(Pxx_non_disp_mean_pks_n_hight),
+Pxx_id_mean_pks_n_freq,np.sqrt(Pxx_id_mean_pks_n_hight),Pyy_mean_pks_n_freq,np.sqrt(Pyy_mean_pks_n_hight),Pyy_id_mean_pks_n_freq,np.sqrt(Pyy_id_mean_pks_n_hight)]
 caput(pvs, values)
 #print "Avg Horizontal n peaks: "
 #print Pxx_non_disp_mean_pks_n_freq
 #print np.sqrt(Pxx_non_disp_mean_pks_n_hight)
 t = time.time() - t0
-message = "Done! t = %.f seconds" %(t)
+message = "Done! t = %.3f seconds" %(t)
 just_print(str(message))
 caput('SR-APHLA{BPM}PSD:LoopTime-I', t)
 

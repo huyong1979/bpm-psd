@@ -31,3 +31,20 @@ record(waveform, "$(P)PSD:IntY-Wf") {
    field(PREC, "3")
 }
 
+#select bad horizontal BPMs 
+record(bo, "$(P)PSD:BadX-Cmd") {
+    field(DESC,"Bad BPM X")
+    field(PINI,"YES")
+    field(ZNAM,"Not Selected")
+    field(ONAM,"Selected")
+    info(autosaveFields_pass0, "VAL")
+    field(VAL, "0")
+}
+record(bo, "$(P)PSD:BadY-Cmd") {
+    field(DESC,"Bad BPM Y")
+    field(PINI,"YES")
+    field(ZNAM,"Not Selected")
+    field(ONAM,"Selected")
+    info(autosaveFields_pass0, "VAL")
+    field(VAL, "0")
+}
