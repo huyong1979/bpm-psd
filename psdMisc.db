@@ -1,23 +1,24 @@
+#update on 09/17/2019: upon Guimei's suggestion, we should not depend on Boris's script
 #conditions to execute the script: Use Matlab trigger + (BPMs are) tiggered
-record(calcout,"SR-APHLA{BPM}PSD:Cmd-Calc1_") {
-    field(DESC,"when to execute the script?")
-    field(INPA,"SR-APHLA{BPM}PSD:IgnoreMatlabTrigger-Cmd CP")
-    field(INPB,"SR-APHLA{BPM}PSD:Trigger-Sts CP")
-    field(CALC,"A==0 && B==1")
-    field(OUT, "SR-APHLA{BPM}PSD-Cmd.PROC")
-    field(OOPT,"When Non-zero")
-}
+#record(calcout,"SR-APHLA{BPM}PSD:Cmd-Calc1_") {
+    #field(DESC,"when to execute the script?")
+    #field(INPA,"SR-APHLA{BPM}PSD:IgnoreMatlabTrigger-Cmd CP")
+    #field(INPB,"SR-APHLA{BPM}PSD:Trigger-Sts CP")
+    #field(CALC,"A==0 && B==1")
+    #field(OUT, "SR-APHLA{BPM}PSD-Cmd.PROC")
+    #field(OOPT,"When Non-zero")
+#}
 
 #execute the script every minute if "Ignore Matlab trigger" 
-record(calcout,"SR-APHLA{BPM}PSD:Cmd-Calc2_") {
-    field(DESC,"when to execute the script?")
-    field(SCAN,"60 second")
-    field(INPA,"SR-APHLA{BPM}PSD:IgnoreMatlabTrigger-Cmd")
-    field(CALC,"A==1")
-    field(OUT, "SR-APHLA{BPM}PSD-Cmd.PROC")
-    field(OOPT,"When Non-zero")
-    info(autosaveFields_pass0, "SCAN")
-}
+#record(calcout,"SR-APHLA{BPM}PSD:Cmd-Calc2_") {
+    #field(DESC,"when to execute the script?")
+    #field(SCAN,"60 second")
+    #field(INPA,"SR-APHLA{BPM}PSD:IgnoreMatlabTrigger-Cmd")
+    #field(CALC,"A==1")
+    #field(OUT, "SR-APHLA{BPM}PSD-Cmd.PROC")
+    #field(OOPT,"When Non-zero")
+    #info(autosaveFields_pass0, "SCAN")
+#}
 
 record(bo, "SR-APHLA{BPM}PSD-Cmd") {
    field(DTYP,"Launcher")
@@ -26,7 +27,8 @@ record(bo, "SR-APHLA{BPM}PSD-Cmd") {
    field(ZNAM,"Idle")
    field(ONAM,"Setting")
    #field(HIGH,"20")
-   #field(SCAN,"60 second")
+   field(SCAN,"60 second")
+   info(autosaveFields_pass0, "SCAN")
 }
 
 record(bo, "SR-APHLA{BPM}PSD:IgnoreMatlabTrigger-Cmd") {
@@ -39,6 +41,7 @@ record(bo, "SR-APHLA{BPM}PSD:IgnoreMatlabTrigger-Cmd") {
 }
 
 #this PV is caput by Boris's Matlab script
+#update on 09/17/2019: this PV is not used any more
 record(bo, "SR-APHLA{BPM}PSD:Trigger-Sts") {
     field(DESC,"trigger status")
     field(PINI,"YES")

@@ -129,34 +129,37 @@ for i in range(len(prefix)):
 
 # get BPM FA data from PVs or file
 fa_recordLen = caget('SR-APHLA{BPM}PSD:Len-SP')
-if caget('SR-APHLA{BPM}PSD:LiveData-Cmd') == 1:  
-    if caget('SR:C03-BI{DCCT:1}I:Real-I') < 0.01:
+if caget('SR-APHLA{BPM}PSD:LiveData-Cmd') == 1: # Data Source: Live Data
+    if caget('SR:C03-BI{DCCT:1}I:Real-I') < 0.01: # if too low beam current 
         print_status_and_exit("No beam, no calculation")
-    if caget('INJ{TOC}OpControl-Sel')==2 and caget('INJ{TOC-SM}Cnt:Next-I')<20:    
+    if caget('INJ{TOC}OpControl-Sel') == 2 and caget('INJ{TOC-SM}Cnt:Next-I') < 20: # if inject beam in 20 sec
         caput('SR-APHLA{BPM}PSD:Counter-Calc_.PROC', 1)
         print_status_and_exit("Top-off inj. is coming in 20-sec so no calculation")
 
     check_settings(machine_type, 5)
-    check_settings(trig_src, 1)
+    #check_settings(trig_src, 1)
     check_settings(wfm_sel, 2)
     #check_settings(fa_len, 100000)
-    if caget("SR-APHLA{BPM}PSD:IgnoreMatlabTrigger-Cmd") == 1:
-        caput('SR:C21-PS{Pinger}Ping-Cmd', 1)
+    if caget("SR-APHLA{BPM}PSD:IgnoreMatlabTrigger-Cmd") == 1: # Ignore Matlab trigger
+        caput('SR:C21-PS{Pinger}Ping-Cmd', 1) # send event 35 (Pinger) trigger
         print_status("Ignore matlab triggering. Sending Pinger trigger, wait...")
         #time.sleep(11.0); # DO NOT use time.sleep()
         cothread.Sleep(12)
-        for i in range(0,10):
-            if sum(caget(tx_status)) > 0:
-                cothread.Sleep(1);
-            else:
-                break
-            if i==9:
-                print_status_and_exit("Timeout: FA data are not ready")
+    else: # Use Matlab trigger
+        print_status("Use Matlab trigger")
+        cothread.Sleep(3)
+    for i in range(0,10):
+        if sum(caget(tx_status)) > 0:
+            cothread.Sleep(1);
+        else:
+            break
+        if i==9:
+            print_status_and_exit("Timeout: FA data are not ready")
 
     print_status("Finally read and process live data...")
     x_all = caget(FA_X, count=fa_recordLen)
     y_all = caget(FA_Y, count=fa_recordLen)
-else:
+else: # Data Source: Data from file
     path = '/home/skongtawong/Documents/Guimei/20190805_beamstudy_new_bpm_psd_and_gain/'
     filename = 'SR_AllIDBPMs_FA_20190805_0701_06_fofb_on_newPI999992_350Hz_pinger_off_02.h5'
     message = "read data from " + path+filename + " and process the data ..."
@@ -168,18 +171,17 @@ else:
 
 x_all = np.asarray(x_all)[:,0:fa_recordLen]/1000.0 #unit: um
 y_all = np.asarray(y_all)[:,0:fa_recordLen]/1000.0
-#print x_all.shape #(223, 100000)
-
-# generate disp bpm index (start from 0 to 179)
+size = x_all.shape
+# generate disp, non-disp, id bpm index (start from 0)
 disp = []
 non_disp = []
 for i in range(1,181):
     if np.mod(i,6) == 3 or np.mod(i,6) == 4:
         disp.append(i-1)
     else:
-        non_disp.append(i-1)   
-#print "dispersive bpm index is (start from 0 to 179)"
-#print disp
+        non_disp.append(i-1)  
+id_bpm = range(180,size[0]) 
+norm_bpm = range(0,180)
 
 # initialize 
 #rf = 499.68e6 # would be good to read from PV
@@ -222,24 +224,25 @@ def get_PSD_and_peaks(fa_data, prom):
         #if nperseg = 1024, len(f)=513
         f, P = signal.welch(x, fs, window='hann', nperseg=n_perseg) 
         P_all = np.append(P_all, P) # in 1D
+        f2 = f[i_f0:i_f1]
+        P2 = P[i_f0:i_f1]
         # find peaks/locations of individual BPM's psd; no PVs for these peaks
-#if i_f0 and i_f1 are used, P*_mean (Pxx_disp_mean, etc.) needs to be sliced too 
-        loc, _ = find_peaks(P[i_f0:i_f1], prominence = prom, distance = dist)
-        pks = P[loc]
+        loc, _ = find_peaks(P2[i_f0:i_f1], prominence = prom, distance = dist)
+        pks = P2[loc]
         # pick max N peaks
         loc_n = (-pks).argsort()
         loc_n = loc_n[0:n_max]
         #loc_n = np.sort(loc_n[0:n_max]) # sort frequency from minimum
         loc_n = loc_n.astype(int)
         # collect peaks data for all horizontal bpm
-        pks_freq[i] = f[loc] # all pks frequency
+        pks_freq[i] = f2[loc] # all pks frequency
         pks_hight[i] = pks # all pks hight
-        pks_n_freq[i] = f[loc[loc_n]] # n max pks frequency
+        pks_n_freq[i] = f2[loc[loc_n]] # n max pks frequency
         pks_n_hight[i] = pks[loc_n] # n max pks hight  
     return P_all, pks_freq, pks_hight, pks_n_freq, pks_n_hight, f
 
-Pxx_all,pks_freq_x,pks_hight_x,pks_n_freq_x,pks_n_hight_x,f = get_PSD_and_peaks(x_all,prom_x)
-Pyy_all,pks_freq_y,pks_hight_y,pks_n_freq_y,pks_n_hight_y,f = get_PSD_and_peaks(y_all,prom_y)
+Pxx_all, pks_freq_x, pks_hight_x, pks_n_freq_x, pks_n_hight_x, f = get_PSD_and_peaks(x_all, prom_x)
+Pyy_all, pks_freq_y, pks_hight_y, pks_n_freq_y, pks_n_hight_y, f = get_PSD_and_peaks(y_all, prom_y)
 
 #caput results
 # reshape psd (1D -> 2D)
@@ -252,10 +255,10 @@ Pyy_all_4ca = np.transpose(Pyy_all)
 caput(PSD_X, np.sqrt(Pxx_all_4ca[0:r,1:])) #PSD of individual BPM
 caput(PSD_Y, np.sqrt(Pyy_all_4ca[0:r,1:]))
 caput('SR-APHLA{BPM}Freq-Wf', f[1:]) #skip f[0] which is 0 (DC)
-# disp, non disp, insertion device (id)
+# get invalid BPMs
 badx = [] #bad BPM x
 bady = [] #[101,125] # start from 0
-invalid_x = caget(invalid_hPV)#len(invalid_x): 223
+invalid_x = caget(invalid_hPV)#len(invalid_x) == len(invalid_y): 223
 invalid_y = caget(invalid_vPV)
 for i in range(len(invalid_x)):
     if invalid_x[i] == 1:
@@ -265,12 +268,24 @@ for i in range(len(invalid_x)):
 print badx
 print bady
 
-Pxx_non_disp = Pxx_all[:,non_disp] # no PVs for this
-Pxx_disp = Pxx_all[:,disp]
-Pxx_id = Pxx_all[:,180:r+1]
-Pyy = Pyy_all[:,0:180]
-Pyy = np.delete(Pyy,bady,1)
-Pyy_id = Pyy_all[:,180:r+1]
+# function to remove invalid BPM
+def remove_BPM(allBPM, badBPM):
+    goodBPM = list(set(allBPM)-set(badBPM))
+    goodBPM.sort()
+    return goodBPM
+
+good_non_disp_x = remove_BPM(non_disp, badx)
+good_disp_x = remove_BPM(disp, badx)
+good_id_x = remove_BPM(id_bpm, badx)
+good_norm_y = remove_BPM(norm_bpm, bady)
+good_id_y = remove_BPM(id_bpm, bady)
+
+# pick valid BPMs for disp, non disp, insertion device (id)
+Pxx_non_disp = Pxx_all[:,good_non_disp_x] # no PVs for this
+Pxx_disp = Pxx_all[:,good_disp_x]
+Pxx_id = Pxx_all[:,good_id_x]
+Pyy = Pyy_all[:,good_norm_y]
+Pyy_id = Pyy_all[:,good_id_y]
 
 # start frequency for integrating PSD
 sf = caget("SR-APHLA{BPM}PSD:StartFreq-SP")#start freq for integral PSD
@@ -293,7 +308,7 @@ int_Pxx_id = np.sqrt(np.cumsum(Pxx_id, axis = 0)*df)
 int_Pyy = np.sqrt(np.cumsum(Pyy, axis = 0)*df)
 int_Pyy_id = np.sqrt(np.cumsum(Pyy_id, axis = 0)*df)
 
-# PSD mean of all bpm for different types
+# PSD mean of all valid BPMs for different types
 Pxx_disp_mean = np.mean(Pxx_disp, axis=1)
 Pxx_non_disp_mean = np.mean(Pxx_non_disp, axis=1)
 Pxx_id_mean = np.mean(Pxx_id, axis=1)
@@ -375,11 +390,16 @@ int_Pxx_id_mean_f2f3,       int_Pyy_mean_f2f3,           int_Pyy_id_mean_f2f3]
 caput(pvs, values)
 
 # find peaks for averaged PSD
-def get_peaks(P, prom):
+def get_peaks(f, P, prom):
     #if i_f0 and i_f1 are used, P*_mean (Pxx_disp_mean, etc.) needs to be sliced too 
+    f2 = f[i_f0:i_f1]
+    P2 = P[i_f0:i_f1]
     #loc, _ = find_peaks(P[i_f0:i_f1], prominence = prom, distance = dist)
-    loc, _ = find_peaks(P, prominence = prom, distance = dist)
-    pks = P[loc] # no PVs for f[loc] and pks
+    #loc, _ = find_peaks(P, prominence = prom, distance = dist)
+    #pks = P[loc] # no PVs for f[loc] and pks
+
+    loc, _ = find_peaks(P2, prominence = prom, distance = dist)
+    pks = P2[loc] # no PVs for f[loc] and pks
     # pick max N peaks
     loc_n = (-pks).argsort()
     loc_n = loc_n[0:n_max]
@@ -388,15 +408,15 @@ def get_peaks(P, prom):
         f_n = [df]*n_max # avoid 0 frequency for logplot
         pks_n = [0]*n_max
     else:
-        f_n = f[loc[loc_n]] # n max pks locations 
+        f_n = f2[loc[loc_n]] # n max pks locations 
         pks_n = pks[loc_n]  # n max pks hight
     return f_n, pks_n 
 
-Pxx_disp_mean_pks_n_freq,     Pxx_disp_mean_pks_n_hight    =get_peaks(Pxx_disp_mean,prom_x)
-Pxx_non_disp_mean_pks_n_freq, Pxx_non_disp_mean_pks_n_hight=get_peaks(Pxx_non_disp_mean,prom_x)
-Pxx_id_mean_pks_n_freq,       Pxx_id_mean_pks_n_hight      =get_peaks(Pxx_id_mean,prom_x)
-Pyy_mean_pks_n_freq,          Pyy_mean_pks_n_hight         =get_peaks(Pyy_mean,prom_y)
-Pyy_id_mean_pks_n_freq,       Pyy_id_mean_pks_n_hight      =get_peaks(Pyy_id_mean,prom_y)
+Pxx_disp_mean_pks_n_freq,     Pxx_disp_mean_pks_n_hight     = get_peaks(f, Pxx_disp_mean, prom_x)
+Pxx_non_disp_mean_pks_n_freq, Pxx_non_disp_mean_pks_n_hight = get_peaks(f, Pxx_non_disp_mean, prom_x)
+Pxx_id_mean_pks_n_freq,       Pxx_id_mean_pks_n_hight       = get_peaks(f, Pxx_id_mean, prom_x,)
+Pyy_mean_pks_n_freq,          Pyy_mean_pks_n_hight          = get_peaks(f, Pyy_mean, prom_y)
+Pyy_id_mean_pks_n_freq,       Pyy_id_mean_pks_n_hight       = get_peaks(f, Pyy_id_mean, prom_y)
 pvs = [
 'SR-APHLA{BPM}PSD:X_DISP_MEAN_PKS_N_F-Wf',     'SR-APHLA{BPM}PSD:X_DISP_MEAN_PKS_N_H-Wf',
 'SR-APHLA{BPM}PSD:X_NON_DISP_MEAN_PKS_N_F-Wf', 'SR-APHLA{BPM}PSD:X_NON_DISP_MEAN_PKS_N_H-Wf',
