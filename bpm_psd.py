@@ -6,9 +6,9 @@ all kinds of PSD(Power Spectral Density)-related results:
 
 2) integral PSD for for each BPM in X and Y planes; 
 
-3) averaged(mean) PSDs of 5 different types of BPMs: horizontal dispersive BPMs 
-(only in X plane, no Y plane), horizontal non-dispersive BPMs, horizontal ID BPMs, 
-vertical BPMs, and vertical ID BPMs;  
+3) averaged(mean) PSDs of 5 different types of BPM data; 
+   in X plane: dispersive, non-dispersive, ID;
+   in Y plane: non-ID, ID;  
 
 4) integrated PSDs of #3 (based on numpy's cumulative sum 'np.cumsum');
 
@@ -22,148 +22,114 @@ vertical BPMs, and vertical ID BPMs;
 import time
 import datetime
 t0 = time.time()
-print "\n%s: start..."%datetime.datetime.now()
+print "\n%s: start a new cycle..."%datetime.datetime.now()
 import sys
 sys.path.append('/usr/lib/python2.7/dist-packages')
 import cothread
 from cothread.catools import caget, caput, DBR_CHAR_STR
 import numpy as np
 from scipy import signal
-import matplotlib.pyplot as plt
 from scipy.signal import find_peaks
-import traceback
 import h5py
 import math
+import matplotlib.pyplot as plt
 #import operator
 #import heapq
 
 #ver = caget('SR:C22-FOFB{CC}FpgaFirmVer-I')
 #print ver
 
-#create lists for BPM and PSD PVs
-prefix = []
-psd_prefix = []
-invalid_hPV = [] #yhu: invalid horizontal/vertical BPMs
-invalid_vPV = []
-#regular BPMs: 6*30
-p_index = ['1','2','3','4','5','6']
-cell_index =['30','01','02','03','04','05','06','07','08','09','10','11','12','13',
-'14','15','16','17','18','19','20','21','22','23','24','25','26','27','28','29']
-for i in cell_index:
-    for j in p_index:
-        prefix.append('SR:C'+i+'-BI{BPM:'+j+'}')
-        psd_prefix.append('SR:C'+i+'-APHLA{BPM:'+j+'}')
-        invalid_hPV.append('SR:C'+i+'-APHLA{BPM:'+j+'}'+'PSD:BadX-Cmd')
-        invalid_vPV.append('SR:C'+i+'-APHLA{BPM:'+j+'}'+'PSD:BadY-Cmd')
-#ID BPMs
-p_index  = ['7','8','9','10']
-cell_index=['04','07','12','19']
-for i in cell_index:
-    for j in p_index:
-        prefix.append('SR:C'+i+'-BI{BPM:'+j+'}')
-        psd_prefix.append('SR:C'+i+'-APHLA{BPM:'+j+'}')
-        invalid_hPV.append('SR:C'+i+'-APHLA{BPM:'+j+'}'+'PSD:BadX-Cmd')
-        invalid_vPV.append('SR:C'+i+'-APHLA{BPM:'+j+'}'+'PSD:BadY-Cmd')
-p_index=['7','8']
-cell_index=['02','03','08','10','11','16','18','21','28']
-for i in cell_index:
-    for j in p_index:
-        prefix.append('SR:C'+i+'-BI{BPM:'+j+'}')
-        psd_prefix.append('SR:C'+i+'-APHLA{BPM:'+j+'}')
-        invalid_hPV.append('SR:C'+i+'-APHLA{BPM:'+j+'}'+'PSD:BadX-Cmd')
-        invalid_vPV.append('SR:C'+i+'-APHLA{BPM:'+j+'}'+'PSD:BadY-Cmd')
-p_index=['7','8','9']
-cell_index=['05','17','23']
-for i in cell_index:
-    for j in p_index:
-        prefix.append('SR:C'+i+'-BI{BPM:'+j+'}')
-        psd_prefix.append('SR:C'+i+'-APHLA{BPM:'+j+'}')
-        invalid_hPV.append('SR:C'+i+'-APHLA{BPM:'+j+'}'+'PSD:BadX-Cmd')
-        invalid_vPV.append('SR:C'+i+'-APHLA{BPM:'+j+'}'+'PSD:BadY-Cmd')
+#create BPM and PSD PV lists
+bpm_index  = [ ['1','2','3','4','5','6'], #group1: 6 regular BPMs: 6*30
+               ['7','8','9','10'], #group2: 4 ID BPMs    
+               ['7','8'], #group3: 2 ID BPMs    
+               ['7','8','9'] #group4: 3 ID BPMs      
+             ]
+cell_index = [ ['30','01','02','03','04','05','06','07','08','09','10','11','12','13',
+'14','15','16','17','18','19','20','21','22','23','24','25','26','27','28','29'],
+               ['04','07','12','19'], #these cells have 4 ID BPMs
+               ['02','03','08','10','11','16','18','21','28'], # 2 ID BPMs/cell
+               ['05','17','23'] # 3 ID BPMs per cell
+             ]
+#List Comprehension works faster?
+def create_pvlist(str1, str2):
+    return (['SR:C'+i+'-'+str(str1)+'{BPM:'+j+'}'+str(str2) 
+  for n in range(len(bpm_index)) for i in cell_index[n] for j in bpm_index[n]])
+#fa_x: FA data in X  plane; a list of waveform PVs
+fa_x =         create_pvlist('BI', 'FA-X')
+fa_y =         create_pvlist('BI', 'FA-Y')        
+machine_type = create_pvlist('BI', 'Loc:Machine-SP')
+trig_src =     create_pvlist('BI', 'Trig:TrigSrc-SP')     
+wfm_sel =      create_pvlist('BI', 'DDR:WfmSel-SP') 
+fa_len =       create_pvlist('BI', 'Burst:FaEnableLen-SP')      
+tx_status =    create_pvlist('BI', 'DDR:TxStatus-I')
+#psd_x: PSD in X plane; a list of waveform PVs
+psd_x =    create_pvlist('APHLA', 'PSD:X-Wf')   
+psd_y =    create_pvlist('APHLA', 'PSD:Y-Wf')    
+psd_intx = create_pvlist('APHLA', 'PSD:IntX-Wf')  
+psd_inty = create_pvlist('APHLA', 'PSD:IntY-Wf') 
+pv_x =     create_pvlist('APHLA', 'PSD:BadX-Cmd') 
+pv_y =     create_pvlist('APHLA', 'PSD:BadY-Cmd') 
 
 #a few small functions
-def print_status(message):
+def update_status(message):
     print "%s: %s"%(datetime.datetime.now(), str(message))
     #put array of characters as string
     caput('SR-APHLA{BPM}PSD:Status-Wf',str(message),datatype=DBR_CHAR_STR)
 
-def print_status_and_exit(message):
-    print_status(message)
+def update_status_and_exit(message):
+    update_status(message)
     sys.exit(1)
 
-def check_settings(pvList, value):
-    values = caget(pvList)
+def check_settings(pvs, value):
+    values = caget(pvs)
     wrong_settings = []
-    for i in range(len(pvList)):
+    for i in range(len(pvs)):
         if values[i] != value:
-            wrong_settings.append(pvList[i])
+            wrong_settings.append(pvs[i])
     if len(wrong_settings) != 0:
         message = "No calculation because of wrong settings for %d BPMs: "\
                   %len(wrong_settings) + str(wrong_settings[0])+ " ..."
-        print_status_and_exit(message)
+        update_status_and_exit(message)
 
-# pv lists
-FA_X=[] #FA data in X  plane; a list of waveform PVs
-FA_Y=[]
-PSD_X = [] # PSD in X plane; a list of waveform PVs
-PSD_Y = []
-PSD_INTX = [] #integral PSD in X plane
-PSD_INTY = []
-machine_type = [] # BPM settings
-trig_src = []
-wfm_sel = []
-fa_len = []
-tx_status = []
-for i in range(len(prefix)):
-    FA_X.append(prefix[i]+'FA-X')
-    FA_Y.append(prefix[i]+'FA-Y') 
-    machine_type.append(prefix[i]+'Loc:Machine-SP') #SR:5
-    trig_src.append(prefix[i]+'Trig:TrigSrc-SP') #Ext:1
-    wfm_sel.append(prefix[i]+'DDR:WfmSel-SP') #FA Wfm:2
-    fa_len.append(prefix[i]+'Burst:FaEnableLen-SP') #100000 
-    tx_status.append(prefix[i]+'DDR:TxStatus-I') #Wfm Ready:0 
-    PSD_X.append(psd_prefix[i]+'PSD:X-Wf') 
-    PSD_Y.append(psd_prefix[i]+'PSD:Y-Wf') 
-    PSD_INTX.append(psd_prefix[i]+'PSD:IntX-Wf') 
-    PSD_INTY.append(psd_prefix[i]+'PSD:IntY-Wf') 
-
-# get BPM FA data from PVs or file
+# get BPM FA data from PVs or a file
 fa_recordLen = caget('SR-APHLA{BPM}PSD:Len-SP')
 if caget('SR-APHLA{BPM}PSD:LiveData-Cmd') == 1: # Data Source: Live Data
     if caget('SR:C03-BI{DCCT:1}I:Real-I') < 0.01: # if too low beam current 
-        print_status_and_exit("No beam, no calculation")
-    if caget('INJ{TOC}OpControl-Sel') == 2 and caget('INJ{TOC-SM}Cnt:Next-I') < 20: # if inject beam in 20 sec
+        update_status_and_exit("No beam, no calculation, waiting for a new cycle...")
+    # if beam is injected in 20 sec
+    if caget('INJ{TOC}OpControl-Sel') == 2 and caget('INJ{TOC-SM}Cnt:Next-I') < 20: 
         caput('SR-APHLA{BPM}PSD:Counter-Calc_.PROC', 1)
-        print_status_and_exit("Top-off inj. is coming in 20-sec so no calculation")
-
+        update_status_and_exit("Top-off inj. is coming in 20-sec so no calculation"+
+", waiting for a new cycle")
     check_settings(machine_type, 5)
     #check_settings(trig_src, 1)
     check_settings(wfm_sel, 2)
     #check_settings(fa_len, 100000)
     if caget("SR-APHLA{BPM}PSD:IgnoreMatlabTrigger-Cmd") == 1: # Ignore Matlab trigger
         caput('SR:C21-PS{Pinger}Ping-Cmd', 1) # send event 35 (Pinger) trigger
-        print_status("Ignore matlab triggering. Sending Pinger trigger, wait...")
+        update_status("Ignore matlab triggering. Sending Pinger trigger, wait...")
         #time.sleep(11.0); # DO NOT use time.sleep()
         cothread.Sleep(12)
     else: # Use Matlab trigger
-        print_status("Use Matlab trigger")
+        update_status("Use Matlab trigger ...")
         cothread.Sleep(3)
     for i in range(0,10):
         if sum(caget(tx_status)) > 0:
-            cothread.Sleep(1);
+            cothread.Sleep(1)
         else:
             break
         if i==9:
-            print_status_and_exit("Timeout: FA data are not ready")
+            update_status_and_exit("Timeout: FA data are not ready")
 
-    print_status("Finally read and process live data...")
-    x_all = caget(FA_X, count=fa_recordLen)
-    y_all = caget(FA_Y, count=fa_recordLen)
+    update_status("Finally read and process live data...")
+    x_all = caget(fa_x, count=fa_recordLen)
+    y_all = caget(fa_y, count=fa_recordLen)
 else: # Data Source: Data from file
     path = '/home/skongtawong/Documents/Guimei/20190805_beamstudy_new_bpm_psd_and_gain/'
     filename = 'SR_AllIDBPMs_FA_20190805_0701_06_fofb_on_newPI999992_350Hz_pinger_off_02.h5'
     message = "read data from " + path+filename + " and process the data ..."
-    print_status(str(message))
+    update_status(str(message))
     fid = h5py.File(path+filename, 'r')
     x_all = fid.get('faX')
     y_all = fid.get('faY')
@@ -190,7 +156,6 @@ fs = rf/1320/38
 n = x_all.shape
 r = n[0] # number of BPMs (rows 223)
 c = n[1] # number of samples (columns 100000)
-# for finding peaks
 n_max = 5 # get 5 peaks for now
 # prominence for finding peaks (um^2/Hz)
 (prom_x,prom_y)=caget(['SR-APHLA{BPM}PSD:PromX-SP','SR-APHLA{BPM}PSD:PromY-SP']) 
@@ -209,7 +174,7 @@ pks_n_hight_x = [0]*r
 pks_n_hight_y = [0]*r
 #start and end frequencies for finding peaks
 f0_pks, f1_pks = caget(['SR-APHLA{BPM}PSD:Freq0-SP','SR-APHLA{BPM}PSD:Freq1-SP'])
-n_perseg = c
+n_perseg = c #number of samples (columns 100000)
 df = fs/n_perseg #~0.1Hz
 i_f0 = int(math.ceil(f0_pks/df)) #index of f0
 i_f1 = int(math.ceil(f1_pks/df))
@@ -252,23 +217,18 @@ Pxx_all_4ca = np.transpose(Pxx_all)
 Pyy_all_4ca = np.transpose(Pyy_all)
 #print Pxx_all_4ca.shape
 #print Pxx_all_4ca
-caput(PSD_X, np.sqrt(Pxx_all_4ca[0:r,1:])) #PSD of individual BPM
-caput(PSD_Y, np.sqrt(Pyy_all_4ca[0:r,1:]))
+caput(psd_x, np.sqrt(Pxx_all_4ca[0:r,1:])) #PSD of individual BPM
+caput(psd_y, np.sqrt(Pyy_all_4ca[0:r,1:]))
 caput('SR-APHLA{BPM}Freq-Wf', f[1:]) #skip f[0] which is 0 (DC)
-# get invalid BPMs
-badx = [] #bad BPM x
-bady = [] #[101,125] # start from 0
-invalid_x = caget(invalid_hPV)#len(invalid_x) == len(invalid_y): 223
-invalid_y = caget(invalid_vPV)
-for i in range(len(invalid_x)):
-    if invalid_x[i] == 1:
-        badx.append(i) 
-    if invalid_y[i] == 1:
-        bady.append(i) 
-print badx
-print bady
 
-# function to remove invalid BPM
+# get invalid BPM index
+value_x = caget(pv_x)#len(pv_x) == len(pv_y): 223
+value_y = caget(pv_y)
+badx = [i for i in range(len(value_x)) if value_x[i] == 1] 
+bady = [i for i in range(len(value_y)) if value_y[i] == 1] 
+#print badx
+
+#by skongtaw: function to remove invalid BPM
 def remove_BPM(allBPM, badBPM):
     goodBPM = list(set(allBPM)-set(badBPM))
     goodBPM.sort()
@@ -299,8 +259,8 @@ int_Pxx_all = np.sqrt(np.cumsum(Pxx_all[i_sf:], axis = 0)*df)
 int_Pyy_all = np.sqrt(np.cumsum(Pyy_all[i_sf:], axis = 0)*df)
 int_Pxx_all_4ca = np.transpose(int_Pxx_all)
 int_Pyy_all_4ca = np.transpose(int_Pyy_all)
-caput(PSD_INTX, int_Pxx_all_4ca[0:r,1:]) #integral PSD of individual BPM
-caput(PSD_INTY, int_Pyy_all_4ca[0:r,1:])
+caput(psd_intx, int_Pxx_all_4ca[0:r,1:]) #integral PSD of individual BPM
+caput(psd_inty, int_Pyy_all_4ca[0:r,1:])
 
 int_Pxx_non_disp = np.sqrt(np.cumsum(Pxx_non_disp, axis = 0)*df) # no PV for this
 int_Pxx_disp = np.sqrt(np.cumsum(Pxx_disp, axis = 0)*df)
@@ -436,8 +396,8 @@ caput(pvs, values)
 #print Pxx_non_disp_mean_pks_n_freq
 #print np.sqrt(Pxx_non_disp_mean_pks_n_hight)
 t = time.time() - t0
-message = "Done! t = %.3f seconds" %(t)
-print_status(str(message))
+message = "Done! Waiting for a new cycle..." 
+update_status(str(message))
 caput('SR-APHLA{BPM}PSD:LoopTime-I', t)
 
 
