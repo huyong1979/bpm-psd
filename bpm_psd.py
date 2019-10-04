@@ -349,11 +349,19 @@ int_Pyy_id_mean_f1f2,       int_Pxx_disp_mean_f2f3,     int_Pxx_non_disp_mean_f2
 int_Pxx_id_mean_f2f3,       int_Pyy_mean_f2f3,           int_Pyy_id_mean_f2f3]
 caput(pvs, values)
 
-# find peaks for averaged PSD
-def get_peaks(f, P, prom):
-    #if i_f0 and i_f1 are used, P*_mean (Pxx_disp_mean, etc.) needs to be sliced too 
-    f2 = f[i_f0:i_f1]
-    P2 = P[i_f0:i_f1]
+# find (5) peaks for averaged PSD
+[i_f0_x_disp, i_f1_x_disp, i_f0_x_non_disp, i_f1_x_non_disp, i_f0_x_id, i_f1_x_id, 
+i_f0_y, i_f1_y, i_f0_y_id, i_f1_y_id] = [int(math.ceil(val/df)) for val in 
+  caget(['SR-APHLA{BPM}PSD:X_DISP_MEAN_Freq0-SP',    'SR-APHLA{BPM}PSD:X_DISP_MEAN_Freq1-SP',
+         'SR-APHLA{BPM}PSD:X_NON_DISP_MEAN_Freq0-SP','SR-APHLA{BPM}PSD:X_NON_DISP_MEAN_Freq1-SP',
+         'SR-APHLA{BPM}PSD:X_ID_MEAN_Freq0-SP',      'SR-APHLA{BPM}PSD:X_ID_MEAN_Freq1-SP',
+         'SR-APHLA{BPM}PSD:Y_MEAN_Freq0-SP',         'SR-APHLA{BPM}PSD:Y_MEAN_Freq1-SP',
+         'SR-APHLA{BPM}PSD:Y_ID_MEAN_Freq0-SP',      'SR-APHLA{BPM}PSD:Y_ID_MEAN_Freq1-SP'])]
+
+def get_peaks(f, P, prom, _i_f0, _i_f1):
+    #if _i_f0 and _i_f1 are used, P*_mean (Pxx_disp_mean, etc.) needs to be sliced too 
+    f2 = f[_i_f0:_i_f1]
+    P2 = P[_i_f0:_i_f1]
     #loc, _ = find_peaks(P[i_f0:i_f1], prominence = prom, distance = dist)
     #loc, _ = find_peaks(P, prominence = prom, distance = dist)
     #pks = P[loc] # no PVs for f[loc] and pks
@@ -372,11 +380,16 @@ def get_peaks(f, P, prom):
         pks_n = pks[loc_n]  # n max pks hight
     return f_n, pks_n 
 
-Pxx_disp_mean_pks_n_freq,     Pxx_disp_mean_pks_n_hight     = get_peaks(f, Pxx_disp_mean, prom_x)
-Pxx_non_disp_mean_pks_n_freq, Pxx_non_disp_mean_pks_n_hight = get_peaks(f, Pxx_non_disp_mean, prom_x)
-Pxx_id_mean_pks_n_freq,       Pxx_id_mean_pks_n_hight       = get_peaks(f, Pxx_id_mean, prom_x,)
-Pyy_mean_pks_n_freq,          Pyy_mean_pks_n_hight          = get_peaks(f, Pyy_mean, prom_y)
-Pyy_id_mean_pks_n_freq,       Pyy_id_mean_pks_n_hight       = get_peaks(f, Pyy_id_mean, prom_y)
+Pxx_disp_mean_pks_n_freq,     Pxx_disp_mean_pks_n_hight     = get_peaks(f, 
+        Pxx_disp_mean,     prom_x, i_f0_x_disp,     i_f1_x_disp)
+Pxx_non_disp_mean_pks_n_freq, Pxx_non_disp_mean_pks_n_hight = get_peaks(f, 
+        Pxx_non_disp_mean, prom_x, i_f0_x_non_disp, i_f1_x_non_disp)
+Pxx_id_mean_pks_n_freq,       Pxx_id_mean_pks_n_hight       = get_peaks(f, 
+        Pxx_id_mean,       prom_x, i_f0_x_id,       i_f1_x_id)
+Pyy_mean_pks_n_freq,          Pyy_mean_pks_n_hight          = get_peaks(f, 
+        Pyy_mean,          prom_y, i_f0_y,          i_f1_y)
+Pyy_id_mean_pks_n_freq,       Pyy_id_mean_pks_n_hight       = get_peaks(f, 
+        Pyy_id_mean,       prom_y, i_f0_y_id,       i_f1_y_id)
 pvs = [
 'SR-APHLA{BPM}PSD:X_DISP_MEAN_PKS_N_F-Wf',     'SR-APHLA{BPM}PSD:X_DISP_MEAN_PKS_N_H-Wf',
 'SR-APHLA{BPM}PSD:X_NON_DISP_MEAN_PKS_N_F-Wf', 'SR-APHLA{BPM}PSD:X_NON_DISP_MEAN_PKS_N_H-Wf',
