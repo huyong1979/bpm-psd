@@ -229,7 +229,7 @@ bady = [i for i in range(len(value_y)) if value_y[i] == 1]
 #print badx
 
 #by skongtaw: function to remove invalid BPM
-def remove_BPM(allBPM, badBPM):
+def remove_BPM(allBPM, badBPM): # can be all badBPM
     goodBPM = list(set(allBPM)-set(badBPM))
     goodBPM.sort()
     return goodBPM

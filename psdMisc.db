@@ -1165,7 +1165,7 @@ record(subArray,"SR-APHLA{BPM}PSD:Y_ID_MEAN_PKS_N_H-P3")
 record(subArray,"SR-APHLA{BPM}PSD:Y_ID_MEAN_PKS_N_H-P4")
 {
    field(DESC,"5th peak")
-   field(INP, "SR-APHLA{BPM}PSD:X_DISP_MEAN_PKS_N_H-Wf")
+   field(INP, "SR-APHLA{BPM}PSD:Y_ID_MEAN_PKS_N_H-Wf")
    field(MALM,"5")
    field(INDX,"4")
    field(NELM,"1")
