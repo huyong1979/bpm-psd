@@ -11,7 +11,7 @@ cd "/epics/iocs/bpm-psd"
 dbLoadDatabase("./scriptlaunch.dbd",0,0)
 scriptlaunch_registerRecordDeviceDriver(pdbbase)
 
-dbLoadRecords("/usr/lib/epics/db/iocAdminSoft.db", "IOC=SR-APHLA{IOC:BPMPSD}")
+#dbLoadRecords("/usr/lib/epics/db/iocAdminSoft.db", "IOC=SR-APHLA{IOC:BPMPSD}")
 dbLoadRecords ("/usr/lib/epics/db/save_restoreStatus.db", "P=SR-APHLA{IOC:BPMPSD}")
 dbLoadTemplate("psd.substitutions")
 dbLoadRecords("psdMisc.db")

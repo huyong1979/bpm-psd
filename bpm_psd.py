@@ -35,6 +35,7 @@ import math
 import matplotlib.pyplot as plt
 #import operator
 #import heapq
+from noise_locator import noise_locator
 
 #ver = caget('SR:C22-FOFB{CC}FpgaFirmVer-I')
 #print ver
@@ -314,39 +315,61 @@ i2 = i2[0][0]
 i3 = i3[0]
 if not i3.size:
     i3 = f.size -1
-# int PSD from f0 to f1 (sum before sqrt)
-int_Pxx_disp_mean_f0f1 = np.sqrt(np.sum(Pxx_disp_mean[i0:i1])*df)
-int_Pxx_non_disp_mean_f0f1 = np.sqrt(np.sum(Pxx_non_disp_mean[i0:i1])*df)
-int_Pxx_id_mean_f0f1 = np.sqrt(np.sum(Pxx_id_mean[i0:i1])*df)
-int_Pyy_mean_f0f1 = np.sqrt(np.sum(Pyy_mean[i0:i1])*df)
-int_Pyy_id_mean_f0f1 = np.sqrt(np.sum(Pyy_id_mean[i0:i1])*df)
-# int PSD from f1 to f2
-int_Pxx_disp_mean_f1f2 = np.sqrt(np.sum(Pxx_disp_mean[i1:i2])*df)
-int_Pxx_non_disp_mean_f1f2 = np.sqrt(np.sum(Pxx_non_disp_mean[i1:i2])*df)
-int_Pxx_id_mean_f1f2 = np.sqrt(np.sum(Pxx_id_mean[i1:i2])*df)
-int_Pyy_mean_f1f2 = np.sqrt(np.sum(Pyy_mean[i1:i2])*df)
-int_Pyy_id_mean_f1f2 = np.sqrt(np.sum(Pyy_id_mean[i1:i2])*df)
-# int PSD from f2 to f3
-int_Pxx_disp_mean_f2f3 = np.sqrt(np.sum(Pxx_disp_mean[i2:i3])*df)
-int_Pxx_non_disp_mean_f2f3 = np.sqrt(np.sum(Pxx_non_disp_mean[i2:i3])*df)
-int_Pxx_id_mean_f2f3 = np.sqrt(np.sum(Pxx_id_mean[i2:i3])*df)
-int_Pyy_mean_f2f3 = np.sqrt(np.sum(Pyy_mean[i2:i3])*df)
-int_Pyy_id_mean_f2f3 = np.sqrt(np.sum(Pyy_id_mean[i2:i3])*df)
-pvs = [
-'SR-APHLA{BPM}PSD:IntX_DISP_MEAN_F0F1-I',    'SR-APHLA{BPM}PSD:IntX_NON_DISP_MEAN_F0F1-I',
-'SR-APHLA{BPM}PSD:IntX_ID_MEAN_F0F1-I',      'SR-APHLA{BPM}PSD:IntY_MEAN_F0F1-I',
-'SR-APHLA{BPM}PSD:IntY_ID_MEAN_F0F1-I',      'SR-APHLA{BPM}PSD:IntX_DISP_MEAN_F1F2-I',
-'SR-APHLA{BPM}PSD:IntX_NON_DISP_MEAN_F1F2-I','SR-APHLA{BPM}PSD:IntX_ID_MEAN_F1F2-I',
-'SR-APHLA{BPM}PSD:IntY_MEAN_F1F2-I',         'SR-APHLA{BPM}PSD:IntY_ID_MEAN_F1F2-I',
-'SR-APHLA{BPM}PSD:IntX_DISP_MEAN_F2F3-I',    'SR-APHLA{BPM}PSD:IntX_NON_DISP_MEAN_F2F3-I',
-'SR-APHLA{BPM}PSD:IntX_ID_MEAN_F2F3-I',      'SR-APHLA{BPM}PSD:IntY_MEAN_F2F3-I',
+
+# find integral PSD from f_i to f_f (sum before sqrt)
+def get_intPSD_fi_ff(i_i, i_f):
+    return (np.sqrt(np.sum(Pxx_disp_mean[i_i:i_f])*df), 
+            np.sqrt(np.sum(Pxx_non_disp_mean[i_i:i_f])*df),
+            np.sqrt(np.sum(Pxx_id_mean[i_i:i_f])*df),
+            np.sqrt(np.sum(Pyy_mean[i_i:i_f])*df),
+            np.sqrt(np.sum(Pyy_id_mean[i_i:i_f])*df))
+
+(int_Pxx_disp_mean_f0f1, int_Pxx_non_disp_mean_f0f1, int_Pxx_id_mean_f0f1, 
+int_Pyy_mean_f0f1, int_Pyy_id_mean_f0f1) = get_intPSD_fi_ff(i0, i1)
+(int_Pxx_disp_mean_f0f2, int_Pxx_non_disp_mean_f0f2, int_Pxx_id_mean_f0f2,
+int_Pyy_mean_f0f2, int_Pyy_id_mean_f0f2) = get_intPSD_fi_ff(i0, i2)
+(int_Pxx_disp_mean_f0f3, int_Pxx_non_disp_mean_f0f3, int_Pxx_id_mean_f0f3,
+int_Pyy_mean_f0f3, int_Pyy_id_mean_f0f3) = get_intPSD_fi_ff(i0, i3)
+(int_Pxx_disp_mean_f1f2, int_Pxx_non_disp_mean_f1f2, int_Pxx_id_mean_f1f2,
+int_Pyy_mean_f1f2, int_Pyy_id_mean_f1f2) = get_intPSD_fi_ff(i1, i2)
+(int_Pxx_disp_mean_f1f3, int_Pxx_non_disp_mean_f1f3, int_Pxx_id_mean_f1f3,
+int_Pyy_mean_f1f3, int_Pyy_id_mean_f1f3) = get_intPSD_fi_ff(i1, i3)
+(int_Pxx_disp_mean_f2f3, int_Pxx_non_disp_mean_f2f3, int_Pxx_id_mean_f2f3,
+int_Pyy_mean_f2f3, int_Pyy_id_mean_f2f3) = get_intPSD_fi_ff(i2, i3)
+
+pvs = [ # need to add PVs for _f0f2, _f0f3, _f1f3
+'SR-APHLA{BPM}PSD:IntX_DISP_MEAN_F0F1-I', 'SR-APHLA{BPM}PSD:IntX_NON_DISP_MEAN_F0F1-I',
+'SR-APHLA{BPM}PSD:IntX_ID_MEAN_F0F1-I',   'SR-APHLA{BPM}PSD:IntY_MEAN_F0F1-I',
+'SR-APHLA{BPM}PSD:IntY_ID_MEAN_F0F1-I',  
+'SR-APHLA{BPM}PSD:IntX_DISP_MEAN_F0F2-I', 'SR-APHLA{BPM}PSD:IntX_NON_DISP_MEAN_F0F2-I',
+'SR-APHLA{BPM}PSD:IntX_ID_MEAN_F0F2-I',   'SR-APHLA{BPM}PSD:IntY_MEAN_F0F2-I',
+'SR-APHLA{BPM}PSD:IntY_ID_MEAN_F0F2-I', 
+'SR-APHLA{BPM}PSD:IntX_DISP_MEAN_F0F3-I', 'SR-APHLA{BPM}PSD:IntX_NON_DISP_MEAN_F0F3-I',
+'SR-APHLA{BPM}PSD:IntX_ID_MEAN_F0F3-I',   'SR-APHLA{BPM}PSD:IntY_MEAN_F0F3-I',
+'SR-APHLA{BPM}PSD:IntY_ID_MEAN_F0F3-I', 
+'SR-APHLA{BPM}PSD:IntX_DISP_MEAN_F1F2-I', 'SR-APHLA{BPM}PSD:IntX_NON_DISP_MEAN_F1F2-I',
+'SR-APHLA{BPM}PSD:IntX_ID_MEAN_F1F2-I',   'SR-APHLA{BPM}PSD:IntY_MEAN_F1F2-I',         
+'SR-APHLA{BPM}PSD:IntY_ID_MEAN_F1F2-I',
+'SR-APHLA{BPM}PSD:IntX_DISP_MEAN_F1F3-I', 'SR-APHLA{BPM}PSD:IntX_NON_DISP_MEAN_F1F3-I',
+'SR-APHLA{BPM}PSD:IntX_ID_MEAN_F1F3-I',   'SR-APHLA{BPM}PSD:IntY_MEAN_F1F3-I',         
+'SR-APHLA{BPM}PSD:IntY_ID_MEAN_F1F3-I',
+'SR-APHLA{BPM}PSD:IntX_DISP_MEAN_F2F3-I', 'SR-APHLA{BPM}PSD:IntX_NON_DISP_MEAN_F2F3-I',
+'SR-APHLA{BPM}PSD:IntX_ID_MEAN_F2F3-I',   'SR-APHLA{BPM}PSD:IntY_MEAN_F2F3-I',
 'SR-APHLA{BPM}PSD:IntY_ID_MEAN_F2F3-I']
+
 values = [
-int_Pxx_disp_mean_f0f1,     int_Pxx_non_disp_mean_f0f1, int_Pxx_id_mean_f0f1,
-int_Pyy_mean_f0f1,          int_Pyy_id_mean_f0f1,       int_Pxx_disp_mean_f1f2,
-int_Pxx_non_disp_mean_f1f2, int_Pxx_id_mean_f1f2,       int_Pyy_mean_f1f2,
-int_Pyy_id_mean_f1f2,       int_Pxx_disp_mean_f2f3,     int_Pxx_non_disp_mean_f2f3,
-int_Pxx_id_mean_f2f3,       int_Pyy_mean_f2f3,           int_Pyy_id_mean_f2f3]
+int_Pxx_disp_mean_f0f1, int_Pxx_non_disp_mean_f0f1, int_Pxx_id_mean_f0f1,
+int_Pyy_mean_f0f1,      int_Pyy_id_mean_f0f1,
+int_Pxx_disp_mean_f0f2, int_Pxx_non_disp_mean_f0f2, int_Pxx_id_mean_f0f2,
+int_Pyy_mean_f0f2,      int_Pyy_id_mean_f0f2, 
+int_Pxx_disp_mean_f0f3, int_Pxx_non_disp_mean_f0f3, int_Pxx_id_mean_f0f3,
+int_Pyy_mean_f0f3,      int_Pyy_id_mean_f0f3,     
+int_Pxx_disp_mean_f1f2, int_Pxx_non_disp_mean_f1f2, int_Pxx_id_mean_f1f2,       
+int_Pyy_mean_f1f2,      int_Pyy_id_mean_f1f2,    
+int_Pxx_disp_mean_f1f3, int_Pxx_non_disp_mean_f1f3, int_Pxx_id_mean_f1f3,       
+int_Pyy_mean_f1f3,      int_Pyy_id_mean_f1f3,    
+int_Pxx_disp_mean_f2f3, int_Pxx_non_disp_mean_f2f3,  int_Pxx_id_mean_f2f3,       
+int_Pyy_mean_f2f3,      int_Pyy_id_mean_f2f3]
 caput(pvs, values)
 
 # find (5) peaks for averaged PSD
@@ -413,6 +436,8 @@ message = "Done! Waiting for a new cycle..."
 update_status(str(message))
 caput('SR-APHLA{BPM}PSD:LoopTime-I', t)
 
+
+noise_locator(x_all, y_all)
 
 # plot if enabled and manually stop IOC and type ./st.cmd
 if caget('SR-APHLA{BPM}PSD:Plot-Cmd') == 1:
