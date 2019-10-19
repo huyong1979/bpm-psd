@@ -1,3 +1,5 @@
+#Miscellaneous PVs for Power Spectral Density
+
 #update on 09/17/2019: upon Guimei's suggestion, we should not depend on Boris's script
 #conditions to execute the script: Use Matlab trigger + (BPMs are) tiggered
 #record(calcout,"SR-APHLA{BPM}PSD:Cmd-Calc1_") {
@@ -84,6 +86,24 @@ record(longout, "SR-APHLA{BPM}PSD:Len-SP") {
    info(autosaveFields_pass0, "VAL DRVH DRVL")
 }
 
+#number of good BPMs
+record(longin,"SR-APHLA{BPM}PSD:X_DISP_GoodBPM-I") {
+   field(DESC,"number of good BPMs")
+}
+record(longin,"SR-APHLA{BPM}PSD:X_NON_DISP_GoodBPM-I") {
+   field(DESC,"number of good BPMs")
+}
+record(longin,"SR-APHLA{BPM}PSD:X_ID_GoodBPM-I") {
+   field(DESC,"number of good BPMs")
+}
+record(longin,"SR-APHLA{BPM}PSD:Y_GoodBPM-I") {
+   field(DESC,"number of good BPMs")
+}
+record(longin,"SR-APHLA{BPM}PSD:Y_ID_GoodBPM-I") {
+   field(DESC,"number of good BPMs")
+}
+
+#Prominence for all BPMs
 record(ao, "SR-APHLA{BPM}PSD:PromX-SP") {
    field(DESC,"prominence for peaks")
    field(PINI,"YES")
@@ -108,6 +128,8 @@ record(ao, "SR-APHLA{BPM}PSD:PromDist-SP") {
    field(PREC,"1")
    info(autosaveFields_pass0, "VAL")
 }
+
+#Prominence for different types of BPMs
 record(ao, "SR-APHLA{BPM}PSD:X_DISP_MEAN_Prom-SP") {
    field(DESC,"prominence for peaks")
    field(PINI,"YES")
@@ -124,6 +146,7 @@ record(ao, "SR-APHLA{BPM}PSD:X_DISP_MEAN_Dist-SP") {
    field(PREC,"1")
    info(autosaveFields_pass0, "VAL")
 }
+#*_StartFreq-SNot used yet
 record(ao, "SR-APHLA{BPM}PSD:IntX_DISP_MEAN_StartFreq-SP") {
    field(DESC, "for int. PSD mean")
    field(PINI,"YES")
@@ -249,6 +272,7 @@ record(ao, "SR-APHLA{BPM}PSD:IntY_ID_MEAN_StartFreq-SP") {
    info(autosaveFields_pass0, "VAL DRVH DRVL HOPR LOPR")
 }
 
+#Frequency for all typs of BPMs
 record(ao, "SR-APHLA{BPM}PSD:StartFreq-SP") {
    field(DESC, "for int. PSD mean")
    field(PINI,"YES")
@@ -287,6 +311,8 @@ record(ao,"SR-APHLA{BPM}PSD:Freq1-SP")
     field(LOPR,"0.09")
     info(autosaveFields_pass0, "VAL DRVL DRVH HOPR LOPR")
 }
+
+#each type of BPMs has its own start and end frequencies
 record(ao,"SR-APHLA{BPM}PSD:X_DISP_MEAN_Freq0-SP")
 {
     field(DESC,"for finding peaks of averaged PSD")
@@ -708,6 +734,7 @@ record(ai, "SR-APHLA{BPM}PSD:IntY_ID_MEAN_F2F3-I") {
    field(EGU, "um")
 }
 
+#5 peaks: Frequency and Height
 record(waveform, "SR-APHLA{BPM}PSD:X_DISP_MEAN_PKS_N_F-Wf") {
    field(DESC,"peak frequencies")
    field(NELM,"5")

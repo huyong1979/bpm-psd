@@ -1,14 +1,14 @@
 '''
 This script gets FA data from all Storage Ring BPMs and then process them to get 
-all kinds of PSD(Power Spectral Density)-related results:
+all kinds of PSD (Power Spectral Density)-related results:
 
-1) PSD(based on welch) and PSD's peaks for each BPM in X and Y planes; 
+1) PSD (based on welch) and PSD's peaks for each BPM in X and Y planes; 
 
 2) integral PSD for for each BPM in X and Y planes; 
 
-3) averaged(mean) PSDs of 5 different types of BPM data; 
-   in X plane: dispersive, non-dispersive, ID;
-   in Y plane: non-ID, ID;  
+3) averaged (mean) PSDs of 5 different types of BPM data; 
+   in X plane: dispersive BPMs(60-bad), non-dispersive(120-bad), ID BPMs(43-bad);
+   in Y plane: non-ID/regular BPMs(180-bad), ID BPMs;  
 
 4) integrated PSDs of #3 (based on numpy's cumulative sum 'np.cumsum');
 
@@ -59,15 +59,15 @@ def create_pvlist(str1, str2):
 #fa_x: FA data in X  plane; a list of waveform PVs
 fa_x =         create_pvlist('BI', 'FA-X')
 fa_y =         create_pvlist('BI', 'FA-Y')        
-machine_type = create_pvlist('BI', 'Loc:Machine-SP')
+machine_type = create_pvlist('BI', 'Loc:Machine-SP') #should be "5"
 trig_src =     create_pvlist('BI', 'Trig:TrigSrc-SP')     
-wfm_sel =      create_pvlist('BI', 'DDR:WfmSel-SP') 
+wfm_sel =      create_pvlist('BI', 'DDR:WfmSel-SP') #should be "2"
 fa_len =       create_pvlist('BI', 'Burst:FaEnableLen-SP')      
-tx_status =    create_pvlist('BI', 'DDR:TxStatus-I')
+tx_status =    create_pvlist('BI', 'DDR:TxStatus-I') #"0" means ready
 #psd_x: PSD in X plane; a list of waveform PVs
 psd_x =    create_pvlist('APHLA', 'PSD:X-Wf')   
 psd_y =    create_pvlist('APHLA', 'PSD:Y-Wf')    
-psd_intx = create_pvlist('APHLA', 'PSD:IntX-Wf')  
+psd_intx = create_pvlist('APHLA', 'PSD:IntX-Wf') #integral PSD in X plane 
 psd_inty = create_pvlist('APHLA', 'PSD:IntY-Wf') 
 pv_x =     create_pvlist('APHLA', 'PSD:BadX-Cmd') 
 pv_y =     create_pvlist('APHLA', 'PSD:BadY-Cmd') 
@@ -136,10 +136,11 @@ else: # Data Source: Data from file
     y_all = fid.get('faY')
     fid.close
 
-x_all = np.asarray(x_all)[:,0:fa_recordLen]/1000.0 #unit: um
+x_all = np.asarray(x_all)[:,0:fa_recordLen]/1000.0 #unit: from nm to um
 y_all = np.asarray(y_all)[:,0:fa_recordLen]/1000.0
-size = x_all.shape
+
 # generate disp, non-disp, id bpm index (start from 0)
+size = x_all.shape
 disp = []
 non_disp = []
 for i in range(1,181):
@@ -149,6 +150,7 @@ for i in range(1,181):
         non_disp.append(i-1)  
 id_bpm = range(180,size[0]) 
 norm_bpm = range(0,180)
+#print len(disp), len(non_disp), len(id_bpm) #60, 120, 43
 
 # initialize 
 #rf = 499.68e6 # would be good to read from PV
@@ -157,15 +159,22 @@ fs = rf/1320/38
 n = x_all.shape
 r = n[0] # number of BPMs (rows 223)
 c = n[1] # number of samples (columns 100000)
-n_max = 5 # get 5 peaks for now
+n_perseg = c #samples per segment in signal.welch
+df = fs/n_perseg #resolution: ~0.1Hz
+#start and end frequencies for finding peaks
+f0_pks, f1_pks = caget(['SR-APHLA{BPM}PSD:Freq0-SP','SR-APHLA{BPM}PSD:Freq1-SP'])
+i_f0 = int(math.ceil(f0_pks/df)) #index of f0
+i_f1 = int(math.ceil(f1_pks/df))
 # prominence for finding peaks (um^2/Hz)
 (prom_x,prom_y)=caget(['SR-APHLA{BPM}PSD:PromX-SP','SR-APHLA{BPM}PSD:PromY-SP']) 
 prom_dist = caget('SR-APHLA{BPM}PSD:PromDist-SP') #distance between peaks (Hz)
+dist = int(math.ceil(prom_dist/df))
+n_max = 5 # get 5 peaks for now
 
 # pre-allowcate output
 Pxx_all = [] #individual BPM PSD in X plane
 Pyy_all = []
-pks_freq_x = [0]*r #peak's frequency in X plane; no PV for this 
+pks_freq_x = [0]*r #peak's frequency in X plane; no PV for individual PSD peak 
 pks_freq_y = [0]*r
 pks_hight_x = [0]*r #peak's amplitude/height
 pks_hight_y = [0]*r
@@ -173,13 +182,6 @@ pks_n_freq_x = [0]*r
 pks_n_freq_y = [0]*r
 pks_n_hight_x = [0]*r
 pks_n_hight_y = [0]*r
-#start and end frequencies for finding peaks
-f0_pks, f1_pks = caget(['SR-APHLA{BPM}PSD:Freq0-SP','SR-APHLA{BPM}PSD:Freq1-SP'])
-n_perseg = c #number of samples (columns 100000)
-df = fs/n_perseg #~0.1Hz
-i_f0 = int(math.ceil(f0_pks/df)) #index of f0
-i_f1 = int(math.ceil(f1_pks/df))
-dist = int(math.ceil(prom_dist/df))
 
 #main loop: PSD calculation
 def get_PSD_and_peaks(fa_data, prom):
@@ -210,7 +212,7 @@ def get_PSD_and_peaks(fa_data, prom):
 Pxx_all, pks_freq_x, pks_hight_x, pks_n_freq_x, pks_n_hight_x, f = get_PSD_and_peaks(x_all, prom_x)
 Pyy_all, pks_freq_y, pks_hight_y, pks_n_freq_y, pks_n_hight_y, f = get_PSD_and_peaks(y_all, prom_y)
 
-#caput results
+#caput results (only Pxx_all, Pyy_all)
 # reshape psd (1D -> 2D)
 Pxx_all = np.transpose(Pxx_all.reshape(r,len(f)))
 Pyy_all = np.transpose(Pyy_all.reshape(r,len(f)))
@@ -240,6 +242,12 @@ good_disp_x = remove_BPM(disp, badx)
 good_id_x = remove_BPM(id_bpm, badx)
 good_norm_y = remove_BPM(norm_bpm, bady)
 good_id_y = remove_BPM(id_bpm, bady)
+pvs = ['SR-APHLA{BPM}PSD:X_DISP_GoodBPM-I', 'SR-APHLA{BPM}PSD:X_NON_DISP_GoodBPM-I',
+       'SR-APHLA{BPM}PSD:X_ID_GoodBPM-I',   'SR-APHLA{BPM}PSD:Y_GoodBPM-I',
+       'SR-APHLA{BPM}PSD:Y_ID_GoodBPM-I']
+values = [len(good_disp_x), len(good_non_disp_x), len(good_id_x), 
+          len(good_norm_y), len(good_id_y)]
+caput(pvs, values)
 
 # pick valid BPMs for disp, non disp, insertion device (id)
 Pxx_non_disp = Pxx_all[:,good_non_disp_x] # no PVs for this
@@ -275,13 +283,11 @@ Pxx_non_disp_mean = np.mean(Pxx_non_disp, axis=1)
 Pxx_id_mean = np.mean(Pxx_id, axis=1)
 Pyy_mean = np.mean(Pyy, axis=1)
 Pyy_id_mean = np.mean(Pyy_id, axis=1)
-pvs = [
-'SR-APHLA{BPM}PSD:X_DISP_MEAN-Wf', 'SR-APHLA{BPM}PSD:X_NON_DISP_MEAN-Wf',
-'SR-APHLA{BPM}PSD:X_ID_MEAN-Wf',   'SR-APHLA{BPM}PSD:Y_MEAN-Wf',
-'SR-APHLA{BPM}PSD:Y_ID_MEAN-Wf']
-values = [
-np.sqrt(Pxx_disp_mean)[1:], np.sqrt(Pxx_non_disp_mean)[1:], np.sqrt(Pxx_id_mean)[1:],
-np.sqrt(Pyy_mean)[1:],      np.sqrt(Pyy_id_mean)[1:] ]
+pvs = ['SR-APHLA{BPM}PSD:X_DISP_MEAN-Wf', 'SR-APHLA{BPM}PSD:X_NON_DISP_MEAN-Wf',
+       'SR-APHLA{BPM}PSD:X_ID_MEAN-Wf',   'SR-APHLA{BPM}PSD:Y_MEAN-Wf',
+       'SR-APHLA{BPM}PSD:Y_ID_MEAN-Wf']
+values=[np.sqrt(Pxx_disp_mean)[1:],np.sqrt(Pxx_non_disp_mean)[1:],np.sqrt(Pxx_id_mean)[1:],
+        np.sqrt(Pyy_mean)[1:],     np.sqrt(Pyy_id_mean)[1:] ]
 caput(pvs, values)
 
 # find int. PSD mean
@@ -290,20 +296,18 @@ int_Pxx_non_disp_mean = np.sqrt(np.cumsum(Pxx_non_disp_mean[i_sf:])*df)
 int_Pxx_id_mean = np.sqrt(np.cumsum(Pxx_id_mean[i_sf:])*df)
 int_Pyy_mean = np.sqrt(np.cumsum(Pyy_mean[i_sf:])*df)
 int_Pyy_id_mean = np.sqrt(np.cumsum(Pyy_id_mean[i_sf:])*df)
-pvs = [
-'SR-APHLA{BPM}PSD:IntX_DISP_MEAN-Wf', 'SR-APHLA{BPM}PSD:IntX_NON_DISP_MEAN-Wf',
-'SR-APHLA{BPM}PSD:IntX_ID_MEAN-Wf',   'SR-APHLA{BPM}PSD:IntY_MEAN-Wf',
-'SR-APHLA{BPM}PSD:IntY_ID_MEAN-Wf']
-values = [
-int_Pxx_disp_mean, int_Pxx_non_disp_mean, int_Pxx_id_mean,
-int_Pyy_mean,      int_Pyy_id_mean]
+pvs = ['SR-APHLA{BPM}PSD:IntX_DISP_MEAN-Wf', 'SR-APHLA{BPM}PSD:IntX_NON_DISP_MEAN-Wf',
+       'SR-APHLA{BPM}PSD:IntX_ID_MEAN-Wf',   'SR-APHLA{BPM}PSD:IntY_MEAN-Wf',
+       'SR-APHLA{BPM}PSD:IntY_ID_MEAN-Wf']
+values = [int_Pxx_disp_mean, int_Pxx_non_disp_mean, int_Pxx_id_mean,
+          int_Pyy_mean,      int_Pyy_id_mean]
 caput(pvs, values)
 
 # find int. PSD of specific ranges of frequency
 # 0 <= f0 < f1 < f2 < f3 <= 5000 for FA data
 #f0 = 0.1,f1 = 1,f2 = 500,f3 = 5000
 f0,f1,f2,f3 = caget(['SR-APHLA{BPM}PSD:F0-SP','SR-APHLA{BPM}PSD:F1-SP',
-'SR-APHLA{BPM}PSD:F2-SP','SR-APHLA{BPM}PSD:F3-SP'])
+                     'SR-APHLA{BPM}PSD:F2-SP','SR-APHLA{BPM}PSD:F3-SP'])
 #print f0, f1, f2, f3
 i0 = np.where(f>=f0)
 i1 = np.where(f>=f1)
@@ -381,7 +385,17 @@ i_f0_y, i_f1_y, i_f0_y_id, i_f1_y_id] = [int(math.ceil(val/df)) for val in
          'SR-APHLA{BPM}PSD:Y_MEAN_Freq0-SP',         'SR-APHLA{BPM}PSD:Y_MEAN_Freq1-SP',
          'SR-APHLA{BPM}PSD:Y_ID_MEAN_Freq0-SP',      'SR-APHLA{BPM}PSD:Y_ID_MEAN_Freq1-SP'])]
 
-def get_peaks(f, P, prom, _i_f0, _i_f1):
+[prom_x_disp, prom_x_non_disp, prom_x_id, prom_y, prom_y_id] = caget(
+['SR-APHLA{BPM}PSD:X_DISP_MEAN_Prom-SP', 'SR-APHLA{BPM}PSD:X_NON_DISP_MEAN_Prom-SP',
+ 'SR-APHLA{BPM}PSD:X_ID_MEAN_Prom-SP',   'SR-APHLA{BPM}PSD:Y_MEAN_Prom-SP',
+ 'SR-APHLA{BPM}PSD:Y_ID_MEAN_Prom-SP'])
+
+[dist_x_disp, dist_x_non_disp, dist_x_id, dist_y, dist_y_id] = [int(math.ceil(val/df)) for val in 
+  caget(['SR-APHLA{BPM}PSD:X_DISP_MEAN_Dist-SP', 'SR-APHLA{BPM}PSD:X_NON_DISP_MEAN_Dist-SP',
+       'SR-APHLA{BPM}PSD:X_ID_MEAN_Dist-SP',   'SR-APHLA{BPM}PSD:Y_MEAN_Dist-SP',
+       'SR-APHLA{BPM}PSD:Y_ID_MEAN_Dist-SP'])]
+
+def get_peaks(f, P, prom, dist, _i_f0, _i_f1):
     #if _i_f0 and _i_f1 are used, P*_mean (Pxx_disp_mean, etc.) needs to be sliced too 
     f2 = f[_i_f0:_i_f1]
     P2 = P[_i_f0:_i_f1]
@@ -404,15 +418,15 @@ def get_peaks(f, P, prom, _i_f0, _i_f1):
     return f_n, pks_n 
 
 Pxx_disp_mean_pks_n_freq,     Pxx_disp_mean_pks_n_hight     = get_peaks(f, 
-        Pxx_disp_mean,     prom_x, i_f0_x_disp,     i_f1_x_disp)
+  Pxx_disp_mean,     prom_x_disp,     dist_x_disp,     i_f0_x_disp,     i_f1_x_disp)
 Pxx_non_disp_mean_pks_n_freq, Pxx_non_disp_mean_pks_n_hight = get_peaks(f, 
-        Pxx_non_disp_mean, prom_x, i_f0_x_non_disp, i_f1_x_non_disp)
+  Pxx_non_disp_mean, prom_x_non_disp, dist_x_non_disp, i_f0_x_non_disp, i_f1_x_non_disp)
 Pxx_id_mean_pks_n_freq,       Pxx_id_mean_pks_n_hight       = get_peaks(f, 
-        Pxx_id_mean,       prom_x, i_f0_x_id,       i_f1_x_id)
+  Pxx_id_mean,       prom_x_id,       dist_x_id,       i_f0_x_id,       i_f1_x_id)
 Pyy_mean_pks_n_freq,          Pyy_mean_pks_n_hight          = get_peaks(f, 
-        Pyy_mean,          prom_y, i_f0_y,          i_f1_y)
+  Pyy_mean,          prom_y,          dist_y,          i_f0_y,          i_f1_y)
 Pyy_id_mean_pks_n_freq,       Pyy_id_mean_pks_n_hight       = get_peaks(f, 
-        Pyy_id_mean,       prom_y, i_f0_y_id,       i_f1_y_id)
+  Pyy_id_mean,       prom_y_id,       dist_y_id,       i_f0_y_id,       i_f1_y_id)
 pvs = [
 'SR-APHLA{BPM}PSD:X_DISP_MEAN_PKS_N_F-Wf',     'SR-APHLA{BPM}PSD:X_DISP_MEAN_PKS_N_H-Wf',
 'SR-APHLA{BPM}PSD:X_NON_DISP_MEAN_PKS_N_F-Wf', 'SR-APHLA{BPM}PSD:X_NON_DISP_MEAN_PKS_N_H-Wf',
