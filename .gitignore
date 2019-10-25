@@ -2,3 +2,4 @@
 *~
 *.pyc
 noise_locator.py
+*.swp

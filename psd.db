@@ -53,16 +53,16 @@ record(bo, "$(P)PSD:BadY-Cmd") {
 record(bo, "$(P)PSD:XVisible-Cmd") {
     field(DESC,"Trace visible?")
     field(PINI,"YES")
-    field(ZNAM,"Visible")
-    field(ONAM,"Not Visible")
+    field(ZNAM,"Not Visible")
+    field(ONAM,"Visible")
     info(autosaveFields_pass0, "VAL")
-    field(VAL, "0")
+    field(VAL, "1")
 }
 record(bo, "$(P)PSD:YVisible-Cmd") {
     field(DESC,"Trace visible?")
     field(PINI,"YES")
-    field(ZNAM,"Visible")
-    field(ONAM,"Not Visible")
+    field(ZNAM,"Not Visible")
+    field(ONAM,"Visible")
     info(autosaveFields_pass0, "VAL")
-    field(VAL, "0")
+    field(VAL, "1")
 }

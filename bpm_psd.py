@@ -446,12 +446,16 @@ caput(pvs, values)
 #print Pxx_non_disp_mean_pks_n_freq
 #print np.sqrt(Pxx_non_disp_mean_pks_n_hight)
 t = time.time() - t0
-message = "Done! Waiting for a new cycle..." 
+message = str(datetime.datetime.now())+": Done! Waiting for a new cycle..." 
 update_status(str(message))
 caput('SR-APHLA{BPM}PSD:LoopTime-I', t)
 
 
 noise_locator(x_all, y_all)
+print len(f)
+print Pxx_non_disp_mean_pks_n_freq
+print Pyy_mean_pks_n_freq
+print np.shape(Pxx_all)
 
 # plot if enabled and manually stop IOC and type ./st.cmd
 if caget('SR-APHLA{BPM}PSD:Plot-Cmd') == 1:

@@ -1,0 +1,54 @@
+#5 peaks: Frequency and Height
+#$(G): 5 Groups (X_DISP, X_NON_DISP, X_ID, Y, Y-ID)
+#$(N): 0, 1, 2, 3, 4
+
+record(waveform, "SR-APHLA{BPM}PSD:$(G)_MEAN_PKS_N_F-Wf") {
+   field(DESC,"peak frequencies")
+   field(NELM,"5")
+   field(FTVL,"DOUBLE")
+   field(EGU, "Hz")
+   field(PREC, "3")
+}
+record(subArray,"SR-APHLA{BPM}PSD:$(G)_MEAN_PKS_N_F-P$(N)_")
+{
+   field(DESC,"#$(N) peak")
+   field(INP, "SR-APHLA{BPM}PSD:$(G)_MEAN_PKS_N_F-Wf CP")
+   field(MALM,"5")
+   field(INDX,"$(N)")
+   field(NELM,"1")
+   field(FTVL,"DOUBLE")
+   field(EGU,  "Hz")
+   field(PREC, "1")
+}
+record(ai, "SR-APHLA{BPM}PSD:$(G)_MEAN_PKS_N_F-P$(N)") {
+   field(DESC,"#$(N) peak")
+   field(INP, "SR-APHLA{BPM}PSD:$(G)_MEAN_PKS_N_F-P$(N)_ CP")
+   field(EGU,  "Hz")
+   field(PREC, "1")
+}
+
+record(waveform, "SR-APHLA{BPM}PSD:$(G)_MEAN_PKS_N_H-Wf") {
+   field(DESC,"peak hights")
+   field(NELM,"5")
+   field(FTVL,"DOUBLE")
+   field(EGU, "um/sqrt(Hz)")
+   field(PREC, "3")
+}
+record(subArray,"SR-APHLA{BPM}PSD:$(G)_MEAN_PKS_N_H-P$(N)_")
+{
+   field(DESC,"#$(N) peak")
+   field(INP, "SR-APHLA{BPM}PSD:$(G)_MEAN_PKS_N_H-Wf CP")
+   field(MALM,"5")
+   field(INDX,"$(N)")
+   field(NELM,"1")
+   field(FTVL,"DOUBLE")
+   field(EGU,  "um/sqrt(Hz)")
+   field(PREC, "3")
+}
+record(ai,"SR-APHLA{BPM}PSD:$(G)_MEAN_PKS_N_H-P$(N)")
+{
+   field(DESC,"#$(N) peak")
+   field(INP, "SR-APHLA{BPM}PSD:$(G)_MEAN_PKS_N_H-P$(N)_ CP")
+   field(EGU,  "um/sqrt(Hz)")
+   field(PREC, "3")
+}
