@@ -1,0 +1,8 @@
+#P: "SR-APHLA{CORR:01}" 
+record(waveform, "$(P)Strength:X-Wf") {
+   field(DESC,"corrector strenght of all frequencies")
+   field(NELM,"100000")
+   field(FTVL,"DOUBLE")
+   #field(EGU, "")
+   field(PREC, "3")
+}

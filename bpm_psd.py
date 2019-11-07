@@ -35,7 +35,7 @@ import math
 import matplotlib.pyplot as plt
 #import operator
 #import heapq
-from noise_locator import noise_locator
+from noise_locator import noise_locator, locate_n_peaks, plot_mesh, plot_n_pks
 
 #ver = caget('SR:C22-FOFB{CC}FpgaFirmVer-I')
 #print ver
@@ -127,8 +127,9 @@ if caget('SR-APHLA{BPM}PSD:LiveData-Cmd') == 1: # Data Source: Live Data
     x_all = caget(fa_x, count=fa_recordLen)
     y_all = caget(fa_y, count=fa_recordLen)
 else: # Data Source: Data from file
-    path = '/home/skongtawong/Documents/Guimei/20190805_beamstudy_new_bpm_psd_and_gain/'
-    filename = 'SR_AllIDBPMs_FA_20190805_0701_06_fofb_on_newPI999992_350Hz_pinger_off_02.h5'
+# change dir 10/28/2019
+    path = '/home/skongtawong/Documents/Guimei/FAData/20191010_fofb_onoff_changepump_p1/' 
+    filename = 'SR_AllIDBPMs_FA_20191010_0311_13_on01.h5'
     message = "read data from " + path+filename + " and process the data ..."
     update_status(str(message))
     fid = h5py.File(path+filename, 'r')
@@ -446,16 +447,44 @@ caput(pvs, values)
 #print Pxx_non_disp_mean_pks_n_freq
 #print np.sqrt(Pxx_non_disp_mean_pks_n_hight)
 t = time.time() - t0
-message = str(datetime.datetime.now())+": Done! Waiting for a new cycle..." 
+message = "Done! Waiting for a new cycle..." 
 update_status(str(message))
 caput('SR-APHLA{BPM}PSD:LoopTime-I', t)
+caput('SR-APHLA{BPM}PSD:Timestamp-Sts', str(datetime.datetime.now()))
 
 
-noise_locator(x_all, y_all)
-print len(f)
-print Pxx_non_disp_mean_pks_n_freq
-print Pyy_mean_pks_n_freq
-print np.shape(Pxx_all)
+# noise locator
+# find corrector strenght of all frequencies
+corr_all_x, corr_all_y = noise_locator(x_all, y_all, good_non_disp_x, good_norm_y) 
+print(corr_all_x.shape)#(90, 100000)
+print(corr_all_x[0,:])
+
+# locate noise for disp hor, non-disp hor, id hor, vert, id vert (5 peaks)
+corr_disp_mean_pks_x,     f_out_disp_mean_pks_x     = locate_n_peaks(corr_all_x, f, Pxx_disp_mean_pks_n_freq) 
+corr_non_disp_mean_pks_x, f_out_non_disp_mean_pks_x = locate_n_peaks(corr_all_x, f, Pxx_non_disp_mean_pks_n_freq) 
+corr_id_mean_pks__x,      f_out_id_mean_pks__x      = locate_n_peaks(corr_all_x, f, Pxx_id_mean_pks_n_freq) 
+corr_mean_pks_y,          f_out_mean_pks_y          = locate_n_peaks(corr_all_y, f, Pyy_mean_pks_n_freq) 
+corr_id_mean_pks_y,       f_out_id_mean_pks_y       = locate_n_peaks(corr_all_y, f, Pyy_id_mean_pks_n_freq) 
+
+pvs = [] # a list of a list of waveforms (a list of 2D array)
+for t in ['X_DISP','X_NON_DISP','X_ID','Y','Y_ID']: # five types
+    pvs.append(['SR-APHLA{CORR}Noise:'+t+'_Freq'+str(n)+'-Wf'for n in [0,1,2,3,4]])
+#values: a list of 2D array (5*(5*90))
+values = [np.transpose(corr_disp_mean_pks_x), np.transpose(corr_non_disp_mean_pks_x), 
+          np.transpose(corr_id_mean_pks__x),  np.transpose(corr_mean_pks_y), 
+          np.transpose(corr_id_mean_pks_y)]
+#caput(pvs, values) does not work because caput only works on 1D/2D array   
+for (pv, value) in zip(pvs, values):
+    caput(pv, value)
+
+# can put any frequencies that we are interested to find the locations
+f_arb = np.array([52.2, 53.2, 54.5, 59.9, 38, 273, 58]) 
+corr_arb_x,               f_out_arb_x               = locate_n_peaks(corr_all_x, f, f_arb)
+# test output
+#print(corr_non_disp_mean_pks_x.shape) #shape: (90, 5)
+#print(f_out_non_disp_mean_pks_x)
+#plt.figure(1)
+#plot_n_pks(corr_non_disp_mean_pks_x, f_out_non_disp_mean_pks_x, 'Horizontal non-disp noise location (max 5 peaks)')
 
 # plot if enabled and manually stop IOC and type ./st.cmd
 if caget('SR-APHLA{BPM}PSD:Plot-Cmd') == 1:

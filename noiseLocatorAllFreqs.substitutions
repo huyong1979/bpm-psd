@@ -1,0 +1,8 @@
+file "/epics/iocs/bpm-psd/noiseLocatorAllFreqs.db"
+{
+pattern
+{P                      }
+{"SR-APHLA{CORR:01}"    }
+{"SR-APHLA{CORR:90}"    }
+
+}    

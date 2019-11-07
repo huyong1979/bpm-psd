@@ -734,3 +734,11 @@ record(ai, "SR-APHLA{BPM}PSD:IntY_ID_MEAN_F2F3-I") {
    field(PREC, "3")
    field(EGU, "um")
 }
+
+#timestamp: when one cycle is completed
+record(stringin, "SR-APHLA{BPM}PSD:Timestamp-Sts")
+{
+    field(DESC,"when one cycle is completed")
+    field(PINI,"YES")
+}
+

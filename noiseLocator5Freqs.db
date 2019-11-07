@@ -1,0 +1,21 @@
+#$(G): 5 Groups (X_DISP, X_NON_DISP, X_ID, Y, Y_ID)
+#$(N): 0, 1, 2, 3, 4
+#SR-APHLA{CORR}Noise:X_DISP_Freq0-Wf
+
+record(waveform, "SR-APHLA{CORR}Noise:$(G)_Freq$(N)-Wf") {
+   field(DESC,"noise")
+   field(NELM,"90")
+   field(FTVL,"DOUBLE")
+   #field(EGU, "")
+   field(PREC, "3")
+}
+
+#trace visible? 
+record(bo, "SR-APHLA{CORR}Noise:$(G)_Freq$(N)_Visible-Cmd") {
+    field(DESC,"Trace visible?")
+    field(PINI,"YES")
+    field(ZNAM,"Not Visible")
+    field(ONAM,"Visible")
+    info(autosaveFields_pass0, "VAL")
+    field(VAL, "1")
+}
