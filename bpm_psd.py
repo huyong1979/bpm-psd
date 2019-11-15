@@ -36,6 +36,7 @@ import matplotlib.pyplot as plt
 #import operator
 #import heapq
 from noise_locator import noise_locator, locate_n_peaks, plot_mesh, plot_n_pks
+from save_data import save_data
 
 #ver = caget('SR:C22-FOFB{CC}FpgaFirmVer-I')
 #print ver
@@ -58,7 +59,10 @@ def create_pvlist(str1, str2):
   for n in range(len(bpm_index)) for i in cell_index[n] for j in bpm_index[n]])
 #fa_x: FA data in X  plane; a list of waveform PVs
 fa_x =         create_pvlist('BI', 'FA-X')
-fa_y =         create_pvlist('BI', 'FA-Y')        
+fa_y =         create_pvlist('BI', 'FA-Y')     
+fa_a =         create_pvlist('BI', 'FA-A') 
+fa_s =         create_pvlist('BI', 'FA-S')   
+prefix =       create_pvlist('BI', '')
 machine_type = create_pvlist('BI', 'Loc:Machine-SP') #should be "5"
 trig_src =     create_pvlist('BI', 'Trig:TrigSrc-SP')     
 wfm_sel =      create_pvlist('BI', 'DDR:WfmSel-SP') #should be "2"
@@ -126,6 +130,9 @@ if caget('SR-APHLA{BPM}PSD:LiveData-Cmd') == 1: # Data Source: Live Data
     update_status("Finally read and process live data...")
     x_all = caget(fa_x, count=fa_recordLen)
     y_all = caget(fa_y, count=fa_recordLen)
+    a_all = caget(fa_a, count=fa_recordLen)
+    s_all = caget(fa_s, count=fa_recordLen)
+    fa_xyas = [x_all, y_all, a_all, s_all]
 else: # Data Source: Data from file
 # change dir 10/28/2019
     path = '/home/skongtawong/Documents/Guimei/FAData/20191010_fofb_onoff_changepump_p1/' 
@@ -231,6 +238,10 @@ value_y = caget(pv_y)
 badx = [i for i in range(len(value_x)) if value_x[i] == 1] 
 bady = [i for i in range(len(value_y)) if value_y[i] == 1] 
 #print badx
+badx_pvname = [pv_x[i] for i in badx]
+bady_pvname = [pv_y[i] for i in bady]
+#print(badx_pvname)
+bad_xy = [badx_pvname, bady_pvname]
 
 #by skongtaw: function to remove invalid BPM
 def remove_BPM(allBPM, badBPM): # can be all badBPM
@@ -287,9 +298,9 @@ Pyy_id_mean = np.mean(Pyy_id, axis=1)
 pvs = ['SR-APHLA{BPM}PSD:X_DISP_MEAN-Wf', 'SR-APHLA{BPM}PSD:X_NON_DISP_MEAN-Wf',
        'SR-APHLA{BPM}PSD:X_ID_MEAN-Wf',   'SR-APHLA{BPM}PSD:Y_MEAN-Wf',
        'SR-APHLA{BPM}PSD:Y_ID_MEAN-Wf']
-values=[np.sqrt(Pxx_disp_mean)[1:],np.sqrt(Pxx_non_disp_mean)[1:],np.sqrt(Pxx_id_mean)[1:],
+mean_PSDs=[np.sqrt(Pxx_disp_mean)[1:],np.sqrt(Pxx_non_disp_mean)[1:],np.sqrt(Pxx_id_mean)[1:],
         np.sqrt(Pyy_mean)[1:],     np.sqrt(Pyy_id_mean)[1:] ]
-caput(pvs, values)
+caput(pvs, mean_PSDs)
 
 # find int. PSD mean
 int_Pxx_disp_mean = np.sqrt(np.cumsum(Pxx_disp_mean[i_sf:])*df)
@@ -300,9 +311,9 @@ int_Pyy_id_mean = np.sqrt(np.cumsum(Pyy_id_mean[i_sf:])*df)
 pvs = ['SR-APHLA{BPM}PSD:IntX_DISP_MEAN-Wf', 'SR-APHLA{BPM}PSD:IntX_NON_DISP_MEAN-Wf',
        'SR-APHLA{BPM}PSD:IntX_ID_MEAN-Wf',   'SR-APHLA{BPM}PSD:IntY_MEAN-Wf',
        'SR-APHLA{BPM}PSD:IntY_ID_MEAN-Wf']
-values = [int_Pxx_disp_mean, int_Pxx_non_disp_mean, int_Pxx_id_mean,
+int_mean_PSDs = [int_Pxx_disp_mean, int_Pxx_non_disp_mean, int_Pxx_id_mean,
           int_Pyy_mean,      int_Pyy_id_mean]
-caput(pvs, values)
+caput(pvs, int_mean_PSDs)
 
 # find int. PSD of specific ranges of frequency
 # 0 <= f0 < f1 < f2 < f3 <= 5000 for FA data
@@ -443,18 +454,18 @@ Pxx_id_mean_pks_n_freq,       np.sqrt(Pxx_id_mean_pks_n_hight),
 Pyy_mean_pks_n_freq,          np.sqrt(Pyy_mean_pks_n_hight),
 Pyy_id_mean_pks_n_freq,       np.sqrt(Pyy_id_mean_pks_n_hight)]
 caput(pvs, values)
+
+mean_peaks_f = [Pxx_disp_mean_pks_n_freq, Pxx_non_disp_mean_pks_n_freq, 
+Pxx_id_mean_pks_n_freq, Pyy_mean_pks_n_freq, Pyy_id_mean_pks_n_freq]
 #print "Avg Horizontal n peaks: "
 #print Pxx_non_disp_mean_pks_n_freq
 #print np.sqrt(Pxx_non_disp_mean_pks_n_hight)
-t = time.time() - t0
-message = "Done! Waiting for a new cycle..." 
-update_status(str(message))
-caput('SR-APHLA{BPM}PSD:LoopTime-I', t)
-caput('SR-APHLA{BPM}PSD:Timestamp-Sts', str(datetime.datetime.now()))
 
 
 # noise locator
 # find corrector strenght of all frequencies
+message = "Noise locator..." 
+update_status(str(message))
 corr_all_x, corr_all_y = noise_locator(x_all, y_all, good_non_disp_x, good_norm_y) 
 print(corr_all_x.shape)#(90, 100000)
 print(corr_all_x[0,:])
@@ -485,6 +496,19 @@ corr_arb_x,               f_out_arb_x               = locate_n_peaks(corr_all_x,
 #print(f_out_non_disp_mean_pks_x)
 #plt.figure(1)
 #plot_n_pks(corr_non_disp_mean_pks_x, f_out_non_disp_mean_pks_x, 'Horizontal non-disp noise location (max 5 peaks)')
+
+
+# save all types of live data to .h5 file:
+message = "Save data to .h5 file..." 
+update_status(str(message))
+if caget('SR-APHLA{BPM}PSD:LiveData-Cmd') == 1: # Data Source: Live Data
+    save_data(fa_xyas, prefix, bad_xy, mean_PSDs, int_mean_PSDs, mean_peaks_f)
+
+t = time.time() - t0
+message = "Done! Waiting for a new cycle..." 
+update_status(str(message))
+caput('SR-APHLA{BPM}PSD:LoopTime-I', t)
+caput('SR-APHLA{BPM}PSD:Timestamp-Sts', str(datetime.datetime.now()))
 
 # plot if enabled and manually stop IOC and type ./st.cmd
 if caget('SR-APHLA{BPM}PSD:Plot-Cmd') == 1:

@@ -1,6 +1,6 @@
 # Noise locator from FA data
 # 10/18/2019
-import time
+import datetime
 import h5py
 import numpy as np
 import matplotlib.pyplot as plt
@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 def noise_locator(x_all, y_all, goodx, goody): # for both planes
     # get ORM form .h5
     # note: ORM start from cell 1, not cell 30. each cell has 8 bpm, bpm 1-6 are for norm BPM, bpm 7-8 are for ID, (begin from 1)
-    print 'start noise locator...'
+    #print 'start noise locator...'
     fid1 = h5py.File('ORM2017.h5', 'r')
     ORM = fid1.get('ORM')
     fid1.close
@@ -66,7 +66,7 @@ def noise_locator(x_all, y_all, goodx, goody): # for both planes
     ffy = np.fft.fft(y)
     Cx = np.abs(np.matmul(Rx_inv, ffx))
     Cy = np.abs(np.matmul(Ry_inv, ffy))
-    print('noise locator complete...')
+    print('%s: noise locator complete...'%datetime.datetime.now())
     return Cx, Cy
 
 def locate_n_peaks(corr_all, f_in, f_n_pks): #for one plane
