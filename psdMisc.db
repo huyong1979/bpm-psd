@@ -742,3 +742,28 @@ record(stringin, "SR-APHLA{BPM}PSD:Timestamp-Sts")
     field(PINI,"YES")
 }
 
+#file name
+record(waveform, "SR-APHLA{BPM}PSD:h5Name-Wf")
+{
+   field(DESC,"file name")
+   field(NELM,"500")
+   field(FTVL,"CHAR")
+}
+record(stringout, "SR-APHLA{BPM}PSD:Path-SP")
+{
+    field(DESC,"file path")
+    field(PINI,"YES")
+    field(VAL, "/epics/data/bpm_psd_data/")
+    info(autosaveFields_pass0, "VAL")
+}
+#record(stringout, "SR-APHLA{BPM}PSD:h5Name-SP")
+record(waveform, "SR-APHLA{BPM}PSD:File4DataSource-SP")
+{
+    field(DESC,"file name")
+    field(NELM,"500")
+    field(FTVL,"CHAR")
+    #field(VAL, "/epics/data/bpm_psd_data/bpm-fa-psd_2019Nov15.h5")
+    info(autosaveFields_pass1, "VAL")
+}
+
+

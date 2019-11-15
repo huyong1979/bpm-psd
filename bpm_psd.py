@@ -19,6 +19,7 @@ all kinds of PSD (Power Spectral Density)-related results:
 #08/14/2019,yhu: based on Sukho's scripts: test04_getBPM.py, test03.py
 ##this is set in st.cmd: PATH="/home/skongtawong/anaconda2/bin:$PATH"
 
+import os
 import time
 import datetime
 t0 = time.time()
@@ -135,11 +136,15 @@ if caget('SR-APHLA{BPM}PSD:LiveData-Cmd') == 1: # Data Source: Live Data
     fa_xyas = [x_all, y_all, a_all, s_all]
 else: # Data Source: Data from file
 # change dir 10/28/2019
-    path = '/home/skongtawong/Documents/Guimei/FAData/20191010_fofb_onoff_changepump_p1/' 
-    filename = 'SR_AllIDBPMs_FA_20191010_0311_13_on01.h5'
-    message = "read data from " + path+filename + " and process the data ..."
+    #path = '/home/skongtawong/Documents/Guimei/FAData/20191010_fofb_onoff_changepump_p1/' 
+    #filename = 'SR_AllIDBPMs_FA_20191010_0311_13_on01.h5'
+    file_name = caget('SR-APHLA{BPM}PSD:File4DataSource-SP', datatype=DBR_CHAR_STR)
+    if not os.path.isfile(file_name):
+        message = "Error: can not read data from " + file_name
+        update_status_and_exit(message)
+    message = "read data from " + str(file_name) + " and process the data ..."
     update_status(str(message))
-    fid = h5py.File(path+filename, 'r')
+    fid = h5py.File(file_name, 'r')
     x_all = fid.get('faX')
     y_all = fid.get('faY')
     fid.close
@@ -464,8 +469,7 @@ Pxx_id_mean_pks_n_freq, Pyy_mean_pks_n_freq, Pyy_id_mean_pks_n_freq]
 
 # noise locator
 # find corrector strenght of all frequencies
-message = "Noise locator..." 
-update_status(str(message))
+update_status("Noise locator...")
 corr_all_x, corr_all_y = noise_locator(x_all, y_all, good_non_disp_x, good_norm_y) 
 print(corr_all_x.shape)#(90, 100000)
 print(corr_all_x[0,:])
@@ -499,14 +503,12 @@ corr_arb_x,               f_out_arb_x               = locate_n_peaks(corr_all_x,
 
 
 # save all types of live data to .h5 file:
-message = "Save data to .h5 file..." 
-update_status(str(message))
 if caget('SR-APHLA{BPM}PSD:LiveData-Cmd') == 1: # Data Source: Live Data
+    update_status("Save data to .h5 file...")
     save_data(fa_xyas, prefix, bad_xy, mean_PSDs, int_mean_PSDs, mean_peaks_f)
 
 t = time.time() - t0
-message = "Done! Waiting for a new cycle..." 
-update_status(str(message))
+update_status("Done! Waiting for a new cycle..." )
 caput('SR-APHLA{BPM}PSD:LoopTime-I', t)
 caput('SR-APHLA{BPM}PSD:Timestamp-Sts', str(datetime.datetime.now()))
 

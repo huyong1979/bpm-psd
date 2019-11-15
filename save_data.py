@@ -25,6 +25,8 @@ Save these types of live data to .h5 file:
   23)xIDMeanPeaksFreq (Pxx_id_mean_pks_n_freq): ...;
   24)yMeanPeaksFreq (Pyy_mean_pks_n_freq): ...;
   25)yIDMeanPeaksFreq (Pyy_id_mean_pks_n_freq): 5 peak frequencies of yIDMeanPSD;
+
+Data are passed from bpm_psd.py to the function save_data()  
 '''
 
 import time
@@ -32,11 +34,12 @@ import datetime
 t0 = time.time()
 import sys
 sys.path.append('/usr/lib/python2.7/dist-packages')
-from cothread.catools import caget
+from cothread.catools import caget, caput, DBR_CHAR_STR
 import numpy as np
 import h5py
 
-path = '/epics/data/bpm_psd_data/' #the directory where .h5 file is saved
+#path = '/epics/data/bpm_psd_data/' #the directory where .h5 file is saved
+path = caget('SR-APHLA{BPM}PSD:Path-SP')
 s_BPM=np.array([  
          4.935   ,   7.46002 ,   13.1446 ,   15.3773 ,   20.2472 ,
          22.8109 ,   29.9886 ,   32.5523 ,   38.3018 ,   40.5345 ,
@@ -109,12 +112,14 @@ def save_data(fa_xyas, prefix, bad_xy, mean_PSDs, int_mean_PSDs, mean_peaks_f):
     'xNonDispMeanPeaksFreq', 'xIDMeanPeaksFreq', 'yMeanPeaksFreq', 'yIDMeanPeaksFreq']
     
     #file_name = path + "bpm-fa-psd_" + time.strftime("%Y%b%d-%H%M%S") + ".h5"
-    file_name = path + "bpm-fa-psd_" + time.strftime("%Y%b%d") + ".h5"
+    file_name = str(path) + "bpm-fa-psd_" + time.strftime("%Y%b%d") + ".h5"
     try:
         with h5py.File(file_name, 'w') as f:
             for (field, value) in zip(fields, values):
                 f[field] = value
     except IOError as e:
         print e.message
+        return
 
     print("%s: data saved in %s"%(datetime.datetime.now(), file_name))
+    caput('SR-APHLA{BPM}PSD:h5Name-Wf', file_name, datatype=DBR_CHAR_STR)
