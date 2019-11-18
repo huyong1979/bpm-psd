@@ -16,6 +16,10 @@ all kinds of PSD (Power Spectral Density)-related results:
 
 '''
 
+#11/18/2019: use conda enviroment; epicsEnvSet("EPICS_BASE"...) is required.
+  #epicsEnvSet("PATH", "/opt/conda_envs/ap-2019-2.0/bin:$PATH")
+  #epicsEnvSet("EPICS_BASE", "/usr/lib/epics")
+
 #08/14/2019,yhu: based on Sukho's scripts: test04_getBPM.py, test03.py
 ##this is set in st.cmd: PATH="/home/skongtawong/anaconda2/bin:$PATH"
 
@@ -23,9 +27,9 @@ import os
 import time
 import datetime
 t0 = time.time()
-print "\n%s: start a new cycle..."%datetime.datetime.now()
+print("\n%s: start a new cycle..."%datetime.datetime.now())
 import sys
-sys.path.append('/usr/lib/python2.7/dist-packages')
+#sys.path.append('/usr/lib/python2.7/dist-packages') # for cothread
 import cothread
 from cothread.catools import caget, caput, DBR_CHAR_STR
 import numpy as np
@@ -40,7 +44,7 @@ from noise_locator import noise_locator, locate_n_peaks, plot_mesh, plot_n_pks
 from save_data import save_data
 
 #ver = caget('SR:C22-FOFB{CC}FpgaFirmVer-I')
-#print ver
+#print(ver)
 
 #create BPM and PSD PV lists
 bpm_index  = [ ['1','2','3','4','5','6'], #group1: 6 regular BPMs: 6*30
@@ -79,7 +83,7 @@ pv_y =     create_pvlist('APHLA', 'PSD:BadY-Cmd')
 
 #a few small functions
 def update_status(message):
-    print "%s: %s"%(datetime.datetime.now(), str(message))
+    print("%s: %s"%(datetime.datetime.now(), str(message)))
     #put array of characters as string
     caput('SR-APHLA{BPM}PSD:Status-Wf',str(message),datatype=DBR_CHAR_STR)
 
@@ -140,10 +144,9 @@ else: # Data Source: Data from file
     #filename = 'SR_AllIDBPMs_FA_20191010_0311_13_on01.h5'
     file_name = caget('SR-APHLA{BPM}PSD:File4DataSource-SP', datatype=DBR_CHAR_STR)
     if not os.path.isfile(file_name):
-        message = "Error: can not read data from " + file_name
-        update_status_and_exit(message)
-    message = "read data from " + str(file_name) + " and process the data ..."
-    update_status(str(message))
+        update_status_and_exit("Error: can not read data from " + file_name)
+
+    update_status("read data from " + file_name + " and process the data ...")
     fid = h5py.File(file_name, 'r')
     x_all = fid.get('faX')
     y_all = fid.get('faY')
@@ -163,7 +166,7 @@ for i in range(1,181):
         non_disp.append(i-1)  
 id_bpm = range(180,size[0]) 
 norm_bpm = range(0,180)
-#print len(disp), len(non_disp), len(id_bpm) #60, 120, 43
+#print(len(disp), len(non_disp), len(id_bpm)) #60, 120, 43
 
 # initialize 
 #rf = 499.68e6 # would be good to read from PV
@@ -231,8 +234,7 @@ Pxx_all = np.transpose(Pxx_all.reshape(r,len(f)))
 Pyy_all = np.transpose(Pyy_all.reshape(r,len(f)))
 Pxx_all_4ca = np.transpose(Pxx_all)
 Pyy_all_4ca = np.transpose(Pyy_all)
-#print Pxx_all_4ca.shape
-#print Pxx_all_4ca
+#print(Pxx_all_4ca.shape)
 caput(psd_x, np.sqrt(Pxx_all_4ca[0:r,1:])) #PSD of individual BPM
 caput(psd_y, np.sqrt(Pyy_all_4ca[0:r,1:]))
 caput('SR-APHLA{BPM}Freq-Wf', f[1:]) #skip f[0] which is 0 (DC)
@@ -242,7 +244,6 @@ value_x = caget(pv_x)#len(pv_x) == len(pv_y): 223
 value_y = caget(pv_y)
 badx = [i for i in range(len(value_x)) if value_x[i] == 1] 
 bady = [i for i in range(len(value_y)) if value_y[i] == 1] 
-#print badx
 badx_pvname = [pv_x[i] for i in badx]
 bady_pvname = [pv_y[i] for i in bady]
 #print(badx_pvname)
@@ -325,7 +326,6 @@ caput(pvs, int_mean_PSDs)
 #f0 = 0.1,f1 = 1,f2 = 500,f3 = 5000
 f0,f1,f2,f3 = caget(['SR-APHLA{BPM}PSD:F0-SP','SR-APHLA{BPM}PSD:F1-SP',
                      'SR-APHLA{BPM}PSD:F2-SP','SR-APHLA{BPM}PSD:F3-SP'])
-#print f0, f1, f2, f3
 i0 = np.where(f>=f0)
 i1 = np.where(f>=f1)
 i2 = np.where(f>=f2)
@@ -450,8 +450,6 @@ pvs = [
 'SR-APHLA{BPM}PSD:X_ID_MEAN_PKS_N_F-Wf',       'SR-APHLA{BPM}PSD:X_ID_MEAN_PKS_N_H-Wf',
 'SR-APHLA{BPM}PSD:Y_MEAN_PKS_N_F-Wf',          'SR-APHLA{BPM}PSD:Y_MEAN_PKS_N_H-Wf',
 'SR-APHLA{BPM}PSD:Y_ID_MEAN_PKS_N_F-Wf',       'SR-APHLA{BPM}PSD:Y_ID_MEAN_PKS_N_H-Wf']
-#print len(Pxx_disp_mean_pks_n_freq)
-#print len(Pyy_id_mean_pks_n_hight)
 values = [
 Pxx_disp_mean_pks_n_freq,     np.sqrt(Pxx_disp_mean_pks_n_hight), 
 Pxx_non_disp_mean_pks_n_freq, np.sqrt(Pxx_non_disp_mean_pks_n_hight),
@@ -462,9 +460,6 @@ caput(pvs, values)
 
 mean_peaks_f = [Pxx_disp_mean_pks_n_freq, Pxx_non_disp_mean_pks_n_freq, 
 Pxx_id_mean_pks_n_freq, Pyy_mean_pks_n_freq, Pyy_id_mean_pks_n_freq]
-#print "Avg Horizontal n peaks: "
-#print Pxx_non_disp_mean_pks_n_freq
-#print np.sqrt(Pxx_non_disp_mean_pks_n_hight)
 
 
 # noise locator
@@ -510,11 +505,12 @@ if caget('SR-APHLA{BPM}PSD:LiveData-Cmd') == 1: # Data Source: Live Data
 t = time.time() - t0
 update_status("Done! Waiting for a new cycle..." )
 caput('SR-APHLA{BPM}PSD:LoopTime-I', t)
-caput('SR-APHLA{BPM}PSD:Timestamp-Sts', str(datetime.datetime.now()))
+if caget('SR-APHLA{BPM}PSD:LiveData-Cmd') == 1: #update TS only for live data
+    caput('SR-APHLA{BPM}PSD:Timestamp-Sts', str(datetime.datetime.now()))
 
 # plot if enabled and manually stop IOC and type ./st.cmd
 if caget('SR-APHLA{BPM}PSD:Plot-Cmd') == 1:
-    print "start plotting"
+    print("start plotting")
     
     # plot PSD of all non-disp bpm (Horizontal)
     plt.figure()
@@ -665,5 +661,5 @@ if caget('SR-APHLA{BPM}PSD:Plot-Cmd') == 1:
     plt.close()
     
     #t = time.time() - t0
-    #print "completed at time = %.f" % (t)
+    #print("completed at time = %.f" % (t))
 

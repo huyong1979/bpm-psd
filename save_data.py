@@ -118,7 +118,7 @@ def save_data(fa_xyas, prefix, bad_xy, mean_PSDs, int_mean_PSDs, mean_peaks_f):
             for (field, value) in zip(fields, values):
                 f[field] = value
     except IOError as e:
-        print e.message
+        print(e.message)
         return
 
     print("%s: data saved in %s"%(datetime.datetime.now(), file_name))

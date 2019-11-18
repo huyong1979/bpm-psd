@@ -2,7 +2,9 @@
 
 epicsEnvSet("EPICS_CA_ADDR_LIST", "10.0.153.255")
 epicsEnvSet("EPICS_CA_AUTO_ADDR_LIST", "NO")
-epicsEnvSet("PATH", "/home/skongtawong/anaconda2/bin:$PATH")
+epicsEnvSet("PATH", "/opt/conda_envs/ap-2019-2.0/bin:$PATH")
+epicsEnvSet("EPICS_BASE", "/usr/lib/epics")
+#epicsEnvSet("PATH", "/home/skongtawong/anaconda2/bin:$PATH")
 #epicsEnvSet("PYTHONPATH", "/epics/op/apps/aphla/lib/python")
 #epicsEnvSet("APHLA_CONFIG_DIR", "/epics/data/aphla/apconf")
 

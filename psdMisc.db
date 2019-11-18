@@ -33,6 +33,15 @@ record(bo, "SR-APHLA{BPM}PSD-Cmd") {
    info(autosaveFields_pass0, "SCAN")
 }
 
+record(bo, "SR-APHLA{BPM}BPMSettings-Cmd") {
+   field(DTYP,"Launcher")
+   field(OUT, "@python /epics/iocs/bpm-psd/bpm_settings_4PSD.py")
+   field(VAL, "0")
+   field(ZNAM,"Idle")
+   field(ONAM,"Setting")
+   #field(HIGH,"20")
+}
+
 record(bo, "SR-APHLA{BPM}PSD:IgnoreMatlabTrigger-Cmd") {
     field(DESC,"ignore Matlab trigger?")
     field(PINI,"YES")
@@ -738,8 +747,9 @@ record(ai, "SR-APHLA{BPM}PSD:IntY_ID_MEAN_F2F3-I") {
 #timestamp: when one cycle is completed
 record(stringin, "SR-APHLA{BPM}PSD:Timestamp-Sts")
 {
-    field(DESC,"when one cycle is completed")
+    field(DESC,"when one cycle live-data is completed")
     field(PINI,"YES")
+    info(autosaveFields_pass0, "VAL")
 }
 
 #file name
@@ -748,6 +758,7 @@ record(waveform, "SR-APHLA{BPM}PSD:h5Name-Wf")
    field(DESC,"file name")
    field(NELM,"500")
    field(FTVL,"CHAR")
+   info(autosaveFields_pass1, "VAL")
 }
 record(stringout, "SR-APHLA{BPM}PSD:Path-SP")
 {
@@ -762,7 +773,6 @@ record(waveform, "SR-APHLA{BPM}PSD:File4DataSource-SP")
     field(DESC,"file name")
     field(NELM,"500")
     field(FTVL,"CHAR")
-    #field(VAL, "/epics/data/bpm_psd_data/bpm-fa-psd_2019Nov15.h5")
     info(autosaveFields_pass1, "VAL")
 }
 
