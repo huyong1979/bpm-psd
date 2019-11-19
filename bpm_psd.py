@@ -47,17 +47,17 @@ from save_data import save_data
 #print(ver)
 
 #create BPM and PSD PV lists
-bpm_index  = [ ['1','2','3','4','5','6'], #group1: 6 regular BPMs: 6*30
-               ['7','8','9','10'], #group2: 4 ID BPMs    
-               ['7','8'], #group3: 2 ID BPMs    
-               ['7','8','9'] #group4: 3 ID BPMs      
-             ]
-cell_index = [ ['30','01','02','03','04','05','06','07','08','09','10','11','12','13',
+bpm_index =[['1','2','3','4','5','6'], #group1: 6 regular BPMs: 6*30
+            ['7','8','9','10'], #group2: 4 ID BPMs    
+            ['7','8'], #group3: 2 ID BPMs    
+            ['7','8','9'] #group4: 3 ID BPMs      
+           ]
+cell_index=[['30','01','02','03','04','05','06','07','08','09','10','11','12','13',
 '14','15','16','17','18','19','20','21','22','23','24','25','26','27','28','29'],
-               ['04','07','12','19'], #these cells have 4 ID BPMs
-               ['02','03','08','10','11','16','18','21','28'], # 2 ID BPMs/cell
-               ['05','17','23'] # 3 ID BPMs per cell
-             ]
+            ['04','07','12','19'], #these cells have 4 ID BPMs
+            ['02','03','08','10','11','16','18','21','28'], # 2 ID BPMs/cell
+            ['05','17','23'] # 3 ID BPMs per cell
+           ]
 #List Comprehension works faster?
 def create_pvlist(str1, str2):
     return (['SR:C'+i+'-'+str(str1)+'{BPM:'+j+'}'+str(str2) 
@@ -104,21 +104,22 @@ def check_settings(pvs, value):
 
 # get BPM FA data from PVs or a file
 fa_recordLen = caget('SR-APHLA{BPM}PSD:Len-SP')
+threshold = caget('SR-APHLA{BPM}PSD:Threshold-SP') #0.01; set to -1 for testing
 if caget('SR-APHLA{BPM}PSD:LiveData-Cmd') == 1: # Data Source: Live Data
-    if caget('SR:C03-BI{DCCT:1}I:Real-I') < 0.01: # if too low beam current 
-        update_status_and_exit("No beam, no calculation, waiting for a new cycle...")
+    if caget('SR:C03-BI{DCCT:1}I:Real-I') < threshold: # if current is too low 
+        update_status_and_exit("No beam, so waiting for a new cycle...")
     # if beam is injected in 20 sec
-    if caget('INJ{TOC}OpControl-Sel') == 2 and caget('INJ{TOC-SM}Cnt:Next-I') < 20: 
+    if caget('INJ{TOC}OpControl-Sel')==2 and caget('INJ{TOC-SM}Cnt:Next-I')<20: 
         caput('SR-APHLA{BPM}PSD:Counter-Calc_.PROC', 1)
-        update_status_and_exit("Top-off inj. is coming in 20-sec so no calculation"+
-", waiting for a new cycle")
+        update_status_and_exit("Injection is coming in 20-sec so no calculation"
+            +", waiting for a new cycle")
     check_settings(machine_type, 5)
     #check_settings(trig_src, 1)
     check_settings(wfm_sel, 2)
     #check_settings(fa_len, 100000)
-    if caget("SR-APHLA{BPM}PSD:IgnoreMatlabTrigger-Cmd") == 1: # Ignore Matlab trigger
+    if caget("SR-APHLA{BPM}PSD:IgnoreMatlabTrigger-Cmd") == 1:
         caput('SR:C21-PS{Pinger}Ping-Cmd', 1) # send event 35 (Pinger) trigger
-        update_status("Ignore matlab triggering. Sending Pinger trigger, wait...")
+        update_status("Ignore matlab trigger. Sending Pinger trigger, wait...")
         #time.sleep(11.0); # DO NOT use time.sleep()
         cothread.Sleep(12)
     else: # Use Matlab trigger
@@ -139,9 +140,7 @@ if caget('SR-APHLA{BPM}PSD:LiveData-Cmd') == 1: # Data Source: Live Data
     s_all = caget(fa_s, count=fa_recordLen)
     fa_xyas = [x_all, y_all, a_all, s_all]
 else: # Data Source: Data from file
-    #path = '/home/skongtawong/Documents/Guimei/FAData/20191010_fofb_onoff_changepump_p1/' 
-    #file_name = path + 'SR_AllIDBPMs_FA_20191010_0311_13_on01.h5'
-    file_name = caget('SR-APHLA{BPM}PSD:File4DataSource-SP', datatype=DBR_CHAR_STR)
+    file_name=caget('SR-APHLA{BPM}PSD:File4DataSource-SP',datatype=DBR_CHAR_STR)
     update_status("read data from " + file_name + " and process the data ...")
     '''with...as does not work here because x_all will be '<Closed HDF5 dataset>'
     try:
@@ -186,7 +185,7 @@ c = n[1] # number of samples (columns 100000)
 n_perseg = c #samples per segment in signal.welch
 df = fs/n_perseg #resolution: ~0.1Hz
 #start and end frequencies for finding peaks
-f0_pks, f1_pks = caget(['SR-APHLA{BPM}PSD:Freq0-SP','SR-APHLA{BPM}PSD:Freq1-SP'])
+f0_pks, f1_pks=caget(['SR-APHLA{BPM}PSD:Freq0-SP','SR-APHLA{BPM}PSD:Freq1-SP'])
 i_f0 = int(math.ceil(f0_pks/df)) #index of f0
 i_f1 = int(math.ceil(f1_pks/df))
 # prominence for finding peaks (um^2/Hz)
@@ -233,8 +232,10 @@ def get_PSD_and_peaks(fa_data, prom):
         pks_n_hight[i] = pks[loc_n] # n max pks hight  
     return P_all, pks_freq, pks_hight, pks_n_freq, pks_n_hight, f
 
-Pxx_all, pks_freq_x, pks_hight_x, pks_n_freq_x, pks_n_hight_x, f = get_PSD_and_peaks(x_all, prom_x)
-Pyy_all, pks_freq_y, pks_hight_y, pks_n_freq_y, pks_n_hight_y, f = get_PSD_and_peaks(y_all, prom_y)
+Pxx_all, pks_freq_x, pks_hight_x, pks_n_freq_x, pks_n_hight_x, f = \
+    get_PSD_and_peaks(x_all, prom_x)
+Pyy_all, pks_freq_y, pks_hight_y, pks_n_freq_y, pks_n_hight_y, f = \
+    get_PSD_and_peaks(y_all, prom_y)
 
 #caput results (only Pxx_all, Pyy_all)
 # reshape psd (1D -> 2D)
@@ -268,9 +269,9 @@ good_disp_x = remove_BPM(disp, badx)
 good_id_x = remove_BPM(id_bpm, badx)
 good_norm_y = remove_BPM(norm_bpm, bady)
 good_id_y = remove_BPM(id_bpm, bady)
-pvs = ['SR-APHLA{BPM}PSD:X_DISP_GoodBPM-I', 'SR-APHLA{BPM}PSD:X_NON_DISP_GoodBPM-I',
-       'SR-APHLA{BPM}PSD:X_ID_GoodBPM-I',   'SR-APHLA{BPM}PSD:Y_GoodBPM-I',
-       'SR-APHLA{BPM}PSD:Y_ID_GoodBPM-I']
+pvs=['SR-APHLA{BPM}PSD:X_DISP_GoodBPM-I','SR-APHLA{BPM}PSD:X_NON_DISP_GoodBPM-I',
+     'SR-APHLA{BPM}PSD:X_ID_GoodBPM-I',  'SR-APHLA{BPM}PSD:Y_GoodBPM-I',
+     'SR-APHLA{BPM}PSD:Y_ID_GoodBPM-I']
 values = [len(good_disp_x), len(good_non_disp_x), len(good_id_x), 
           len(good_norm_y), len(good_id_y)]
 caput(pvs, values)
@@ -297,7 +298,7 @@ int_Pyy_all_4ca = np.transpose(int_Pyy_all)
 caput(psd_intx, int_Pxx_all_4ca[0:r,1:]) #integral PSD of individual BPM
 caput(psd_inty, int_Pyy_all_4ca[0:r,1:])
 
-int_Pxx_non_disp = np.sqrt(np.cumsum(Pxx_non_disp, axis = 0)*df) # no PV for this
+int_Pxx_non_disp = np.sqrt(np.cumsum(Pxx_non_disp, axis = 0)*df)#no PV for this
 int_Pxx_disp = np.sqrt(np.cumsum(Pxx_disp, axis = 0)*df)
 int_Pxx_id = np.sqrt(np.cumsum(Pxx_id, axis = 0)*df)
 int_Pyy = np.sqrt(np.cumsum(Pyy, axis = 0)*df)
@@ -312,8 +313,9 @@ Pyy_id_mean = np.mean(Pyy_id, axis=1)
 pvs = ['SR-APHLA{BPM}PSD:X_DISP_MEAN-Wf', 'SR-APHLA{BPM}PSD:X_NON_DISP_MEAN-Wf',
        'SR-APHLA{BPM}PSD:X_ID_MEAN-Wf',   'SR-APHLA{BPM}PSD:Y_MEAN-Wf',
        'SR-APHLA{BPM}PSD:Y_ID_MEAN-Wf']
-mean_PSDs=[np.sqrt(Pxx_disp_mean)[1:],np.sqrt(Pxx_non_disp_mean)[1:],np.sqrt(Pxx_id_mean)[1:],
-        np.sqrt(Pyy_mean)[1:],     np.sqrt(Pyy_id_mean)[1:] ]
+mean_PSDs=[np.sqrt(Pxx_disp_mean)[1:], np.sqrt(Pxx_non_disp_mean)[1:],
+           np.sqrt(Pxx_id_mean)[1:],   np.sqrt(Pyy_mean)[1:],     
+           np.sqrt(Pyy_id_mean)[1:]]
 caput(pvs, mean_PSDs)
 
 # find int. PSD mean
@@ -322,9 +324,9 @@ int_Pxx_non_disp_mean = np.sqrt(np.cumsum(Pxx_non_disp_mean[i_sf:])*df)
 int_Pxx_id_mean = np.sqrt(np.cumsum(Pxx_id_mean[i_sf:])*df)
 int_Pyy_mean = np.sqrt(np.cumsum(Pyy_mean[i_sf:])*df)
 int_Pyy_id_mean = np.sqrt(np.cumsum(Pyy_id_mean[i_sf:])*df)
-pvs = ['SR-APHLA{BPM}PSD:IntX_DISP_MEAN-Wf', 'SR-APHLA{BPM}PSD:IntX_NON_DISP_MEAN-Wf',
-       'SR-APHLA{BPM}PSD:IntX_ID_MEAN-Wf',   'SR-APHLA{BPM}PSD:IntY_MEAN-Wf',
-       'SR-APHLA{BPM}PSD:IntY_ID_MEAN-Wf']
+pvs=['SR-APHLA{BPM}PSD:IntX_DISP_MEAN-Wf','SR-APHLA{BPM}PSD:IntX_NON_DISP_MEAN-Wf',
+     'SR-APHLA{BPM}PSD:IntX_ID_MEAN-Wf',  'SR-APHLA{BPM}PSD:IntY_MEAN-Wf',
+     'SR-APHLA{BPM}PSD:IntY_ID_MEAN-Wf']
 int_mean_PSDs = [int_Pxx_disp_mean, int_Pxx_non_disp_mean, int_Pxx_id_mean,
           int_Pyy_mean,      int_Pyy_id_mean]
 caput(pvs, int_mean_PSDs)
@@ -367,23 +369,23 @@ int_Pyy_mean_f1f3, int_Pyy_id_mean_f1f3) = get_intPSD_fi_ff(i1, i3)
 int_Pyy_mean_f2f3, int_Pyy_id_mean_f2f3) = get_intPSD_fi_ff(i2, i3)
 
 pvs = [ # need to add PVs for _f0f2, _f0f3, _f1f3
-'SR-APHLA{BPM}PSD:IntX_DISP_MEAN_F0F1-I', 'SR-APHLA{BPM}PSD:IntX_NON_DISP_MEAN_F0F1-I',
-'SR-APHLA{BPM}PSD:IntX_ID_MEAN_F0F1-I',   'SR-APHLA{BPM}PSD:IntY_MEAN_F0F1-I',
+'SR-APHLA{BPM}PSD:IntX_DISP_MEAN_F0F1-I','SR-APHLA{BPM}PSD:IntX_NON_DISP_MEAN_F0F1-I',
+'SR-APHLA{BPM}PSD:IntX_ID_MEAN_F0F1-I',  'SR-APHLA{BPM}PSD:IntY_MEAN_F0F1-I',
 'SR-APHLA{BPM}PSD:IntY_ID_MEAN_F0F1-I',  
-'SR-APHLA{BPM}PSD:IntX_DISP_MEAN_F0F2-I', 'SR-APHLA{BPM}PSD:IntX_NON_DISP_MEAN_F0F2-I',
-'SR-APHLA{BPM}PSD:IntX_ID_MEAN_F0F2-I',   'SR-APHLA{BPM}PSD:IntY_MEAN_F0F2-I',
+'SR-APHLA{BPM}PSD:IntX_DISP_MEAN_F0F2-I','SR-APHLA{BPM}PSD:IntX_NON_DISP_MEAN_F0F2-I',
+'SR-APHLA{BPM}PSD:IntX_ID_MEAN_F0F2-I',  'SR-APHLA{BPM}PSD:IntY_MEAN_F0F2-I',
 'SR-APHLA{BPM}PSD:IntY_ID_MEAN_F0F2-I', 
-'SR-APHLA{BPM}PSD:IntX_DISP_MEAN_F0F3-I', 'SR-APHLA{BPM}PSD:IntX_NON_DISP_MEAN_F0F3-I',
-'SR-APHLA{BPM}PSD:IntX_ID_MEAN_F0F3-I',   'SR-APHLA{BPM}PSD:IntY_MEAN_F0F3-I',
+'SR-APHLA{BPM}PSD:IntX_DISP_MEAN_F0F3-I','SR-APHLA{BPM}PSD:IntX_NON_DISP_MEAN_F0F3-I',
+'SR-APHLA{BPM}PSD:IntX_ID_MEAN_F0F3-I',  'SR-APHLA{BPM}PSD:IntY_MEAN_F0F3-I',
 'SR-APHLA{BPM}PSD:IntY_ID_MEAN_F0F3-I', 
-'SR-APHLA{BPM}PSD:IntX_DISP_MEAN_F1F2-I', 'SR-APHLA{BPM}PSD:IntX_NON_DISP_MEAN_F1F2-I',
-'SR-APHLA{BPM}PSD:IntX_ID_MEAN_F1F2-I',   'SR-APHLA{BPM}PSD:IntY_MEAN_F1F2-I',         
+'SR-APHLA{BPM}PSD:IntX_DISP_MEAN_F1F2-I','SR-APHLA{BPM}PSD:IntX_NON_DISP_MEAN_F1F2-I',
+'SR-APHLA{BPM}PSD:IntX_ID_MEAN_F1F2-I',  'SR-APHLA{BPM}PSD:IntY_MEAN_F1F2-I',         
 'SR-APHLA{BPM}PSD:IntY_ID_MEAN_F1F2-I',
-'SR-APHLA{BPM}PSD:IntX_DISP_MEAN_F1F3-I', 'SR-APHLA{BPM}PSD:IntX_NON_DISP_MEAN_F1F3-I',
-'SR-APHLA{BPM}PSD:IntX_ID_MEAN_F1F3-I',   'SR-APHLA{BPM}PSD:IntY_MEAN_F1F3-I',         
+'SR-APHLA{BPM}PSD:IntX_DISP_MEAN_F1F3-I','SR-APHLA{BPM}PSD:IntX_NON_DISP_MEAN_F1F3-I',
+'SR-APHLA{BPM}PSD:IntX_ID_MEAN_F1F3-I',  'SR-APHLA{BPM}PSD:IntY_MEAN_F1F3-I',         
 'SR-APHLA{BPM}PSD:IntY_ID_MEAN_F1F3-I',
-'SR-APHLA{BPM}PSD:IntX_DISP_MEAN_F2F3-I', 'SR-APHLA{BPM}PSD:IntX_NON_DISP_MEAN_F2F3-I',
-'SR-APHLA{BPM}PSD:IntX_ID_MEAN_F2F3-I',   'SR-APHLA{BPM}PSD:IntY_MEAN_F2F3-I',
+'SR-APHLA{BPM}PSD:IntX_DISP_MEAN_F2F3-I','SR-APHLA{BPM}PSD:IntX_NON_DISP_MEAN_F2F3-I',
+'SR-APHLA{BPM}PSD:IntX_ID_MEAN_F2F3-I',  'SR-APHLA{BPM}PSD:IntY_MEAN_F2F3-I',
 'SR-APHLA{BPM}PSD:IntY_ID_MEAN_F2F3-I']
 
 values = [
@@ -404,24 +406,26 @@ caput(pvs, values)
 # find (5) peaks for averaged PSD
 [i_f0_x_disp, i_f1_x_disp, i_f0_x_non_disp, i_f1_x_non_disp, i_f0_x_id, i_f1_x_id, 
 i_f0_y, i_f1_y, i_f0_y_id, i_f1_y_id] = [int(math.ceil(val/df)) for val in 
-  caget(['SR-APHLA{BPM}PSD:X_DISP_MEAN_Freq0-SP',    'SR-APHLA{BPM}PSD:X_DISP_MEAN_Freq1-SP',
-         'SR-APHLA{BPM}PSD:X_NON_DISP_MEAN_Freq0-SP','SR-APHLA{BPM}PSD:X_NON_DISP_MEAN_Freq1-SP',
-         'SR-APHLA{BPM}PSD:X_ID_MEAN_Freq0-SP',      'SR-APHLA{BPM}PSD:X_ID_MEAN_Freq1-SP',
-         'SR-APHLA{BPM}PSD:Y_MEAN_Freq0-SP',         'SR-APHLA{BPM}PSD:Y_MEAN_Freq1-SP',
-         'SR-APHLA{BPM}PSD:Y_ID_MEAN_Freq0-SP',      'SR-APHLA{BPM}PSD:Y_ID_MEAN_Freq1-SP'])]
+  caget(
+['SR-APHLA{BPM}PSD:X_DISP_MEAN_Freq0-SP',    'SR-APHLA{BPM}PSD:X_DISP_MEAN_Freq1-SP',
+ 'SR-APHLA{BPM}PSD:X_NON_DISP_MEAN_Freq0-SP','SR-APHLA{BPM}PSD:X_NON_DISP_MEAN_Freq1-SP',
+ 'SR-APHLA{BPM}PSD:X_ID_MEAN_Freq0-SP',      'SR-APHLA{BPM}PSD:X_ID_MEAN_Freq1-SP',
+ 'SR-APHLA{BPM}PSD:Y_MEAN_Freq0-SP',         'SR-APHLA{BPM}PSD:Y_MEAN_Freq1-SP',
+ 'SR-APHLA{BPM}PSD:Y_ID_MEAN_Freq0-SP',      'SR-APHLA{BPM}PSD:Y_ID_MEAN_Freq1-SP'])]
 
 [prom_x_disp, prom_x_non_disp, prom_x_id, prom_y, prom_y_id] = caget(
-['SR-APHLA{BPM}PSD:X_DISP_MEAN_Prom-SP', 'SR-APHLA{BPM}PSD:X_NON_DISP_MEAN_Prom-SP',
- 'SR-APHLA{BPM}PSD:X_ID_MEAN_Prom-SP',   'SR-APHLA{BPM}PSD:Y_MEAN_Prom-SP',
+['SR-APHLA{BPM}PSD:X_DISP_MEAN_Prom-SP','SR-APHLA{BPM}PSD:X_NON_DISP_MEAN_Prom-SP',
+ 'SR-APHLA{BPM}PSD:X_ID_MEAN_Prom-SP',  'SR-APHLA{BPM}PSD:Y_MEAN_Prom-SP',
  'SR-APHLA{BPM}PSD:Y_ID_MEAN_Prom-SP'])
 
-[dist_x_disp, dist_x_non_disp, dist_x_id, dist_y, dist_y_id] = [int(math.ceil(val/df)) for val in 
-  caget(['SR-APHLA{BPM}PSD:X_DISP_MEAN_Dist-SP', 'SR-APHLA{BPM}PSD:X_NON_DISP_MEAN_Dist-SP',
-       'SR-APHLA{BPM}PSD:X_ID_MEAN_Dist-SP',   'SR-APHLA{BPM}PSD:Y_MEAN_Dist-SP',
-       'SR-APHLA{BPM}PSD:Y_ID_MEAN_Dist-SP'])]
+[dist_x_disp, dist_x_non_disp, dist_x_id, dist_y, dist_y_id] = [int(math.ceil(val/df)) 
+for val in caget(
+['SR-APHLA{BPM}PSD:X_DISP_MEAN_Dist-SP','SR-APHLA{BPM}PSD:X_NON_DISP_MEAN_Dist-SP',
+ 'SR-APHLA{BPM}PSD:X_ID_MEAN_Dist-SP',  'SR-APHLA{BPM}PSD:Y_MEAN_Dist-SP',
+ 'SR-APHLA{BPM}PSD:Y_ID_MEAN_Dist-SP'])]
 
 def get_peaks(f, P, prom, dist, _i_f0, _i_f1):
-    #if _i_f0 and _i_f1 are used, P*_mean (Pxx_disp_mean, etc.) needs to be sliced too 
+    #if _i_f0 & _i_f1 are used, P*_mean (Pxx_disp_mean...)needs to be sliced too 
     f2 = f[_i_f0:_i_f1]
     P2 = P[_i_f0:_i_f1]
     #loc, _ = find_peaks(P[i_f0:i_f1], prominence = prom, distance = dist)
@@ -453,11 +457,11 @@ Pyy_mean_pks_n_freq,          Pyy_mean_pks_n_hight          = get_peaks(f,
 Pyy_id_mean_pks_n_freq,       Pyy_id_mean_pks_n_hight       = get_peaks(f, 
   Pyy_id_mean,       prom_y_id,       dist_y_id,       i_f0_y_id,       i_f1_y_id)
 pvs = [
-'SR-APHLA{BPM}PSD:X_DISP_MEAN_PKS_N_F-Wf',     'SR-APHLA{BPM}PSD:X_DISP_MEAN_PKS_N_H-Wf',
-'SR-APHLA{BPM}PSD:X_NON_DISP_MEAN_PKS_N_F-Wf', 'SR-APHLA{BPM}PSD:X_NON_DISP_MEAN_PKS_N_H-Wf',
-'SR-APHLA{BPM}PSD:X_ID_MEAN_PKS_N_F-Wf',       'SR-APHLA{BPM}PSD:X_ID_MEAN_PKS_N_H-Wf',
-'SR-APHLA{BPM}PSD:Y_MEAN_PKS_N_F-Wf',          'SR-APHLA{BPM}PSD:Y_MEAN_PKS_N_H-Wf',
-'SR-APHLA{BPM}PSD:Y_ID_MEAN_PKS_N_F-Wf',       'SR-APHLA{BPM}PSD:Y_ID_MEAN_PKS_N_H-Wf']
+'SR-APHLA{BPM}PSD:X_DISP_MEAN_PKS_N_F-Wf',    'SR-APHLA{BPM}PSD:X_DISP_MEAN_PKS_N_H-Wf',
+'SR-APHLA{BPM}PSD:X_NON_DISP_MEAN_PKS_N_F-Wf','SR-APHLA{BPM}PSD:X_NON_DISP_MEAN_PKS_N_H-Wf',
+'SR-APHLA{BPM}PSD:X_ID_MEAN_PKS_N_F-Wf',      'SR-APHLA{BPM}PSD:X_ID_MEAN_PKS_N_H-Wf',
+'SR-APHLA{BPM}PSD:Y_MEAN_PKS_N_F-Wf',         'SR-APHLA{BPM}PSD:Y_MEAN_PKS_N_H-Wf',
+'SR-APHLA{BPM}PSD:Y_ID_MEAN_PKS_N_F-Wf',      'SR-APHLA{BPM}PSD:Y_ID_MEAN_PKS_N_H-Wf']
 values = [
 Pxx_disp_mean_pks_n_freq,     np.sqrt(Pxx_disp_mean_pks_n_hight), 
 Pxx_non_disp_mean_pks_n_freq, np.sqrt(Pxx_non_disp_mean_pks_n_hight),
@@ -473,36 +477,39 @@ Pxx_id_mean_pks_n_freq, Pyy_mean_pks_n_freq, Pyy_id_mean_pks_n_freq]
 # noise locator
 # find corrector strenght of all frequencies
 update_status("Noise locator...")
-corr_all_x, corr_all_y = noise_locator(x_all, y_all, good_non_disp_x, good_norm_y) 
-print(corr_all_x.shape)#(90, 100000)
-print(corr_all_x[0,:])
+corr_all_x, corr_all_y = noise_locator(x_all, y_all,good_non_disp_x,good_norm_y) 
+#print(corr_all_x.shape)#(90, 100000)
+#print(corr_all_x[0,:])
 
 # locate noise for disp hor, non-disp hor, id hor, vert, id vert (5 peaks)
-corr_disp_mean_pks_x,     f_out_disp_mean_pks_x     = locate_n_peaks(corr_all_x, f, Pxx_disp_mean_pks_n_freq) 
-corr_non_disp_mean_pks_x, f_out_non_disp_mean_pks_x = locate_n_peaks(corr_all_x, f, Pxx_non_disp_mean_pks_n_freq) 
-corr_id_mean_pks__x,      f_out_id_mean_pks__x      = locate_n_peaks(corr_all_x, f, Pxx_id_mean_pks_n_freq) 
-corr_mean_pks_y,          f_out_mean_pks_y          = locate_n_peaks(corr_all_y, f, Pyy_mean_pks_n_freq) 
-corr_id_mean_pks_y,       f_out_id_mean_pks_y       = locate_n_peaks(corr_all_y, f, Pyy_id_mean_pks_n_freq) 
+corr_disp_mean_pks_x,     f_out_disp_mean_pks_x     = locate_n_peaks(corr_all_x, 
+    f, Pxx_disp_mean_pks_n_freq) 
+corr_non_disp_mean_pks_x, f_out_non_disp_mean_pks_x = locate_n_peaks(corr_all_x, 
+    f, Pxx_non_disp_mean_pks_n_freq) 
+corr_id_mean_pks__x,      f_out_id_mean_pks__x      = locate_n_peaks(corr_all_x, 
+    f, Pxx_id_mean_pks_n_freq) 
+corr_mean_pks_y,          f_out_mean_pks_y          = locate_n_peaks(corr_all_y, 
+    f, Pyy_mean_pks_n_freq) 
+corr_id_mean_pks_y,       f_out_id_mean_pks_y       = locate_n_peaks(corr_all_y, 
+    f, Pyy_id_mean_pks_n_freq) 
 
 pvs = [] # a list of a list of waveforms (a list of 2D array)
 for t in ['X_DISP','X_NON_DISP','X_ID','Y','Y_ID']: # five types
-    pvs.append(['SR-APHLA{CORR}Noise:'+t+'_Freq'+str(n)+'-Wf'for n in [0,1,2,3,4]])
+  pvs.append(['SR-APHLA{CORR}Noise:'+t+'_Freq'+str(n)+'-Wf' for n in [0,1,2,3,4]])
 #values: a list of 2D array (5*(5*90))
-values = [np.transpose(corr_disp_mean_pks_x), np.transpose(corr_non_disp_mean_pks_x), 
-          np.transpose(corr_id_mean_pks__x),  np.transpose(corr_mean_pks_y), 
-          np.transpose(corr_id_mean_pks_y)]
+values=[np.transpose(corr_disp_mean_pks_x),np.transpose(corr_non_disp_mean_pks_x), 
+        np.transpose(corr_id_mean_pks__x), np.transpose(corr_mean_pks_y), 
+        np.transpose(corr_id_mean_pks_y)]
 #caput(pvs, values) does not work because caput only works on 1D/2D array   
 for (pv, value) in zip(pvs, values):
     caput(pv, value)
 
 # can put any frequencies that we are interested to find the locations
 f_arb = np.array([52.2, 53.2, 54.5, 59.9, 38, 273, 58]) 
-corr_arb_x,               f_out_arb_x               = locate_n_peaks(corr_all_x, f, f_arb)
+corr_arb_x, f_out_arb_x = locate_n_peaks(corr_all_x, f, f_arb)
 # test output
 #print(corr_non_disp_mean_pks_x.shape) #shape: (90, 5)
 #print(f_out_non_disp_mean_pks_x)
-#plt.figure(1)
-#plot_n_pks(corr_non_disp_mean_pks_x, f_out_non_disp_mean_pks_x, 'Horizontal non-disp noise location (max 5 peaks)')
 
 
 # save all types of live data to .h5 file:

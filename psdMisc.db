@@ -95,6 +95,15 @@ record(longout, "SR-APHLA{BPM}PSD:Len-SP") {
    info(autosaveFields_pass0, "VAL DRVH DRVL")
 }
 
+record(ao, "SR-APHLA{BPM}PSD:Threshold-SP") {
+   field(DESC,"threshold for beam current")
+   field(PINI,"YES")
+   field(VAL, "0.01")
+   field(PREC, "3")
+   field(EGU, "mA")
+   info(autosaveFields_pass0, "VAL")
+}
+
 #number of good BPMs
 record(longin,"SR-APHLA{BPM}PSD:X_DISP_GoodBPM-I") {
    field(DESC,"number of good BPMs")
