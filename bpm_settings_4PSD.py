@@ -3,15 +3,18 @@ Set all Storage Ring BPMs' settings appropriate for PSD monitoring
 '''
 
 import datetime
+import cothread
 from cothread.catools import caput, DBR_CHAR_STR
 
-message = "Making BPMs' settings for PSD ..."
-print("%s: %s"%(datetime.datetime.now(), str(message)))
-#put array of characters as string
-caput('SR-APHLA{BPM}PSD:Status-Wf',str(message),datatype=DBR_CHAR_STR)
+#from bpm_psd import update_status #this import will execute bpm_psd.py
+def _update_status(message):
+    print("%s: %s"%(datetime.datetime.now(), str(message)))
+    caput('SR-APHLA{BPM}PSD:Status-Wf',str(message),datatype=DBR_CHAR_STR) 
 
 def _caput(*args):
     caput(*args, repeat_value = True)
+
+_update_status("Configuring BPMs' settings for PSD ...")
 
 #prefix: ID BPMs: SR-HLA{}IDBPMs*; #Arc BPMs: SR-HLA{}AllBPMs*
 #9 groups of PVs
@@ -37,6 +40,8 @@ caput('SR-APHLA{BPM}PSD:IgnoreMatlabTrigger-Cmd',1)  #ignore matlab tirgger
 caput('SR-APHLA{BPM}PSD:LiveData-Cmd',1)  #Live data
 caput('SR-APHLA{BPM}PSD-Cmd.SCAN',6)  #60 sec scan 
 
+cothread.Sleep(5)
+_update_status("Done with BPMs' settings for PSD!")
 
 
 '''

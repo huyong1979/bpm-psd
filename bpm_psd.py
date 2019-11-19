@@ -139,19 +139,27 @@ if caget('SR-APHLA{BPM}PSD:LiveData-Cmd') == 1: # Data Source: Live Data
     s_all = caget(fa_s, count=fa_recordLen)
     fa_xyas = [x_all, y_all, a_all, s_all]
 else: # Data Source: Data from file
-# change dir 10/28/2019
     #path = '/home/skongtawong/Documents/Guimei/FAData/20191010_fofb_onoff_changepump_p1/' 
-    #filename = 'SR_AllIDBPMs_FA_20191010_0311_13_on01.h5'
+    #file_name = path + 'SR_AllIDBPMs_FA_20191010_0311_13_on01.h5'
     file_name = caget('SR-APHLA{BPM}PSD:File4DataSource-SP', datatype=DBR_CHAR_STR)
-    if not os.path.isfile(file_name):
-        update_status_and_exit("Error: can not read data from " + file_name)
-
     update_status("read data from " + file_name + " and process the data ...")
+    '''with...as does not work here because x_all will be '<Closed HDF5 dataset>'
+    try:
+        with h5py.File(file_name, 'r') as fid:
+            x_all = fid.get('faX')
+            y_all = fid.get('faY')
+            print(type(x_all))
+    except Exception as e:
+        print("{}: {}".format(type(e),e))
+        update_status_and_exit("Error: can not read " + file_name)   
+    '''  
+    if not os.path.isfile(file_name):
+        update_status_and_exit("Error: can not read " + file_name)
     fid = h5py.File(file_name, 'r')
     x_all = fid.get('faX')
     y_all = fid.get('faY')
     fid.close
-
+    
 x_all = np.asarray(x_all)[:,0:fa_recordLen]/1000.0 #unit: from nm to um
 y_all = np.asarray(y_all)[:,0:fa_recordLen]/1000.0
 
@@ -499,7 +507,7 @@ corr_arb_x,               f_out_arb_x               = locate_n_peaks(corr_all_x,
 
 # save all types of live data to .h5 file:
 if caget('SR-APHLA{BPM}PSD:LiveData-Cmd') == 1: # Data Source: Live Data
-    update_status("Save data to .h5 file...")
+    update_status("Saving data to .h5 file...")
     save_data(fa_xyas, prefix, bad_xy, mean_PSDs, int_mean_PSDs, mean_peaks_f)
 
 t = time.time() - t0
@@ -507,6 +515,8 @@ update_status("Done! Waiting for a new cycle..." )
 caput('SR-APHLA{BPM}PSD:LoopTime-I', t)
 if caget('SR-APHLA{BPM}PSD:LiveData-Cmd') == 1: #update TS only for live data
     caput('SR-APHLA{BPM}PSD:Timestamp-Sts', str(datetime.datetime.now()))
+
+
 
 # plot if enabled and manually stop IOC and type ./st.cmd
 if caget('SR-APHLA{BPM}PSD:Plot-Cmd') == 1:

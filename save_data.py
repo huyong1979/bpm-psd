@@ -33,7 +33,7 @@ import time
 import datetime
 t0 = time.time()
 import sys
-sys.path.append('/usr/lib/python2.7/dist-packages')
+#sys.path.append('/usr/lib/python2.7/dist-packages')
 from cothread.catools import caget, caput, DBR_CHAR_STR
 import numpy as np
 import h5py
@@ -83,8 +83,15 @@ def save_data(fa_xyas, prefix, bad_xy, mean_PSDs, int_mean_PSDs, mean_peaks_f):
     '''Save all kinds of live data to .h5 file'''
     #x_all, y_all, a_all, s_all = fa_xyas[0], fa_xyas[1], fa_xyas[2], fa_xyas[3];
     [x_all, y_all, a_all, s_all] = [fa for fa in fa_xyas]
+
+    #How to handle a list of strings in Python 3: https://github.com/h5py/h5py/issues/892
+    prefix = np.array(prefix, dtype='S')
     [badx_pvname, bady_pvname] = [bad for bad in bad_xy]
-    #print(bady_pvname)
+    #print(badx_pvname) #['SR:C16-APHLA{BPM:6}PSD:BadX-Cmd', ...]
+    badx_pvname = np.array(badx_pvname, dtype='S')
+    #print(badx_pvname) #[b'SR:C16-APHLA{BPM:6}PSD:BadX-Cmd' b...]
+    bady_pvname = np.array(bady_pvname, dtype='S')
+    
     [Pxx_disp_mean, Pxx_non_disp_mean, Pxx_id_mean, Pyy_mean, Pyy_id_mean] = \
         [psd for psd in mean_PSDs]  
 
@@ -105,7 +112,7 @@ def save_data(fa_xyas, prefix, bad_xy, mean_PSDs, int_mean_PSDs, mean_peaks_f):
     + [Pxx_disp_mean_pks_n_freq, Pxx_non_disp_mean_pks_n_freq, Pxx_id_mean_pks_n_freq, 
        Pyy_mean_pks_n_freq, Pyy_id_mean_pks_n_freq]
     
-    fields = ['faX', 'faY', 'faA', 'faS', 'beamCur', 'nBunch', 'prefix', 's',
+    attrs = ['faX', 'faY', 'faA', 'faS', 'beamCur', 'nBunch', 'prefix', 's',
     'badX', 'badY', 'xDispMeanPSD', 'xNonDispMeanPSD', 'xIDMeanPSD', 
     'yMeanPSD', 'yIDMeanPSD', 'intXDispMeanPSD', 'intXNonDispMeanPSD',
     'intXIDMeanPSD', 'intYMeanPSD', 'intYIDMeanPSD', 'xDispMeanPeaksFreq',
@@ -115,10 +122,10 @@ def save_data(fa_xyas, prefix, bad_xy, mean_PSDs, int_mean_PSDs, mean_peaks_f):
     file_name = str(path) + "bpm-fa-psd_" + time.strftime("%Y%b%d") + ".h5"
     try:
         with h5py.File(file_name, 'w') as f:
-            for (field, value) in zip(fields, values):
-                f[field] = value
-    except IOError as e:
-        print(e.message)
+            for (attr, value) in zip(attrs, values):
+                f[attr] = value        
+    except Exception as e:
+        print("{}: {}".format(type(e),e))
         return
 
     print("%s: data saved in %s"%(datetime.datetime.now(), file_name))

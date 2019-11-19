@@ -755,7 +755,8 @@ record(stringin, "SR-APHLA{BPM}PSD:Timestamp-Sts")
 #file name
 record(waveform, "SR-APHLA{BPM}PSD:h5Name-Wf")
 {
-   field(DESC,"file name")
+   field(DESC,"latest saved file")
+   field(PINI,"YES")
    field(NELM,"500")
    field(FTVL,"CHAR")
    info(autosaveFields_pass1, "VAL")
@@ -767,10 +768,11 @@ record(stringout, "SR-APHLA{BPM}PSD:Path-SP")
     field(VAL, "/epics/data/bpm_psd_data/")
     info(autosaveFields_pass0, "VAL")
 }
-#record(stringout, "SR-APHLA{BPM}PSD:h5Name-SP")
+
 record(waveform, "SR-APHLA{BPM}PSD:File4DataSource-SP")
 {
     field(DESC,"file name")
+    field(PINI,"YES")
     field(NELM,"500")
     field(FTVL,"CHAR")
     info(autosaveFields_pass1, "VAL")
