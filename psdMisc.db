@@ -104,6 +104,13 @@ record(ao, "SR-APHLA{BPM}PSD:Threshold-SP") {
    info(autosaveFields_pass0, "VAL")
 }
 
+record(bo, "SR-APHLA{BPM}PSD:SaveData-Cmd") {
+   field(PINI,"YES")
+   field(VAL, "0")
+   field(ZNAM,"Done!")
+   field(ONAM,"Saving Data...")
+}
+
 #number of good BPMs
 record(longin,"SR-APHLA{BPM}PSD:X_DISP_GoodBPM-I") {
    field(DESC,"number of good BPMs")

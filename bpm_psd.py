@@ -41,7 +41,6 @@ import matplotlib.pyplot as plt
 #import operator
 #import heapq
 from noise_locator import noise_locator, locate_n_peaks, plot_mesh, plot_n_pks
-from save_data import save_data
 
 #ver = caget('SR:C22-FOFB{CC}FpgaFirmVer-I')
 #print(ver)
@@ -105,7 +104,8 @@ def check_settings(pvs, value):
 # get BPM FA data from PVs or a file
 fa_recordLen = caget('SR-APHLA{BPM}PSD:Len-SP')
 threshold = caget('SR-APHLA{BPM}PSD:Threshold-SP') #0.01; set to -1 for testing
-if caget('SR-APHLA{BPM}PSD:LiveData-Cmd') == 1: # Data Source: Live Data
+live_data = caget('SR-APHLA{BPM}PSD:LiveData-Cmd')
+if live_data == 1: # Data Source: Live Data
     if caget('SR:C03-BI{DCCT:1}I:Real-I') < threshold: # if current is too low 
         update_status_and_exit("No beam, so waiting for a new cycle...")
     # if beam is injected in 20 sec
@@ -512,11 +512,14 @@ corr_arb_x, f_out_arb_x = locate_n_peaks(corr_all_x, f, f_arb)
 #print(corr_non_disp_mean_pks_x.shape) #shape: (90, 5)
 #print(f_out_non_disp_mean_pks_x)
 
-
-# save all types of live data to .h5 file:
-if caget('SR-APHLA{BPM}PSD:LiveData-Cmd') == 1: # Data Source: Live Data
+# save all types of live data to .h5 file at ~ 9am everyday:
+hour_min = time.strftime("%H, %M")
+save_data = caget('SR-APHLA{BPM}PSD:SaveData-Cmd')
+if live_data==1 and ('09, 00'<=hour_min<='09, 03' or save_data==1):
+    caput('SR-APHLA{BPM}PSD:SaveData-Cmd', 0)
+    from save_data import save_data
     update_status("Saving data to .h5 file...")
-    save_data(fa_xys,prefix,bad_xy,mean_PSDs,int_mean_PSDs,mean_peaks_f,corr_locs)
+    save_data(prefix,bad_xy,fa_xys,mean_PSDs,int_mean_PSDs,mean_peaks_f,corr_locs)
 
 t = time.time() - t0
 update_status("Done! Waiting for a new cycle..." )

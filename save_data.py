@@ -1,45 +1,45 @@
 '''
-Save these types of live data to .h5 file:
-  1) faX (x_all): all BPM FA data in X plane;
-  2) faY (y_all): all BPM FA data in Y plane;
-  3) faA (a_all): all BPM FA data for button A;
-  4) faS (s_all): all BPM FA data for sum of 4 buttons;
-  5) beamCur (beam_cur): SR beam current;
-  6) nBunch (n_bunch): number of bunches;
-  7) prefix: prefix for BPM PVs;
-  8) s (s_BPM): BPM location in Z plane;
-  9) badX (badx_pvname): invalid BPM PV names in X plane;
-  10)badY (bady_pvname): invalid BPM PV names in Y plane;
-  11)xDispMeanPSD (Pxx_disp_mean): averaged PSD of dispersive BPMs in X plane;
-  12)xNonDispMeanPSD (*non_disp*): averaged PSD of non-dispersive BPMs in X plane;
-  13)xIDMeanPSD (Pxx_id_mean): averaged PSD of ID BPMs in X plane;
-  14)yMeanPSD (Pyy_mean): averaged PSD of non-ID BPMs in Y plane;
-  15)yIDMeanPSD (Pyy_id_mean): averaged PSD of ID BPMs in Y plane;
-  16)intXDispMeanPSD (int_Pxx_disp_mean): integral PSD of xDispMeanPSD;
-  17)intXNonDispMeanPSD (int_Pxx_non_disp_mean): ...;
-  18)intXIDMeanPSD (int_Pxx_id_mean): ...;
-  19)intYMeanPSD (int_Pyy_mean): ...;
-  20)intYIDMeanPSD (int_Pyy_id_mean): integral PSD of yIDMeanPSD;;
-  21)xDispMeanPeaksFreq (Pxx_disp_mean_pks_n_freq): 5 peak frequencies of xDispMeanPSD;
-  22)xNonDispMeanPeaksFreq (Pxx_non_disp_mean_pks_n_freq): ...;
-  23)xIDMeanPeaksFreq (Pxx_id_mean_pks_n_freq): ...;
-  24)yMeanPeaksFreq (Pyy_mean_pks_n_freq): ...;
-  25)yIDMeanPeaksFreq (Pyy_id_mean_pks_n_freq): 5 peak frequencies of yIDMeanPSD;
+Save 29 types of data to .h5 file as 6 groups:
+  1. environment:
+     1)beam_current: Storage Ring (SR) beam current;
+     2)beam_bunch: number of bunches in the SR; 
+     3)bpm_prefix: prefix for SR BPM PV names;
+     4)bpm_location: BPM location in Z plane;
+     5)bpm_badx: invalid BPM PV names in X plane;
+     6)bpm_bady: invalid BPM PV names in Y plane;
+  2. FA:
+     1)X: all SR BPM FA data (223*100000) in X plane;
+     2)Y: all SR BPM FA data (223*100000) in Y plane;
+     3)S: all BPM FA data for sum of 4 buttons;
+  3. averaged_PSDs:
+     1)x_dispersive: averaged PSD of dispersive BPMs in X plane;
+     2)x_non-dispersive: averaged PSD of non-dispersive BPMs in X plane;  
+     3)x_ID: averaged PSD of ID BPMs in X plane;  
+     4)y: averaged PSD of non-ID BPMs in Y plane;  
+     5)y_ID: averaged PSD of ID BPMs in Y plane;  
+  4. integral_PSDs:
+     1)x_dispersive: integral PSD of averaged_PSDs/x_dispersive;
+     2)x_non-dispersive: ...
+     3)x_ID: ...  
+     4)y: ...
+     5)y_ID: ...
+  5. peak_frequencies:
+     1)x_dispersive: 5 peak frequencies of averaged_PSDs/x_dispersive;
+     2)x_non-dispersive: ...
+     3)x_ID: ...  
+     4)y: ...
+     5)y_ID: ...
+  6. corrector_locations:
+     1)x_dispersive: corrector locations for 5 peak frequencies;
+     2)x_non-dispersive: ...
+     3)x_ID: ...  
+     4)y: ...
+     5)y_ID: ...
 
-Data are passed from bpm_psd.py to the function save_data()  
+Some data are passed from bpm_psd.py to the function save_data()  
 '''
 
-import time
-import datetime
-t0 = time.time()
-import sys
-#sys.path.append('/usr/lib/python2.7/dist-packages')
-from cothread.catools import caget, caput, DBR_CHAR_STR
 import numpy as np
-import h5py
-
-#path = '/epics/data/bpm_psd_data/' #the directory where .h5 file is saved
-path = caget('SR-APHLA{BPM}PSD:Path-SP')
 s_BPM=np.array([  
          4.935   ,   7.46002 ,   13.1446 ,   15.3773 ,   20.2472 ,
          22.8109 ,   29.9886 ,   32.5523 ,   38.3018 ,   40.5345 ,
@@ -79,54 +79,58 @@ s_BPM=np.array([
         752.305  ,  754.538  ,  759.408  ,  761.972  ,  769.149  ,
         771.713  ,  777.463  ,  779.695  ,  784.498  ,  787.023  ])
 
-def save_data(fa_xys, prefix, bad_xy, mean_PSDs, int_mean_PSDs, mean_peaks_f, locs):
-    '''Save all kinds of live data to .h5 file'''
-    #x_all, y_all, a_all, s_all = fa_xyas[0], fa_xyas[1], fa_xyas[2], fa_xyas[3];
-    [x_all, y_all, s_all] = [fa for fa in fa_xys]
+import time
+import datetime
+#t0 = time.time()
+#sys.path.append('/usr/lib/python2.7/dist-packages')
+from cothread.catools import caget, caput, DBR_CHAR_STR
+import h5py
 
-    #How to handle a list of strings in Python 3: https://github.com/h5py/h5py/issues/892
-    prefix = np.array(prefix, dtype='S')
-    [badx_pvname, bady_pvname] = [bad for bad in bad_xy]
-    #print(badx_pvname) #['SR:C16-APHLA{BPM:6}PSD:BadX-Cmd', ...]
-    badx_pvname = np.array(badx_pvname, dtype='S')
-    #print(badx_pvname) #[b'SR:C16-APHLA{BPM:6}PSD:BadX-Cmd' b...]
-    bady_pvname = np.array(bady_pvname, dtype='S')
-    
-    [Pxx_disp_mean, Pxx_non_disp_mean, Pxx_id_mean, Pyy_mean, Pyy_id_mean] = \
-        [psd for psd in mean_PSDs]  
-
-    [int_Pxx_disp_mean, int_Pxx_non_disp_mean, int_Pxx_id_mean,
-     int_Pyy_mean, int_Pyy_id_mean] = [psd for psd in int_mean_PSDs]  
-
-    [Pxx_disp_mean_pks_n_freq, Pxx_non_disp_mean_pks_n_freq, Pxx_id_mean_pks_n_freq,
-     Pyy_mean_pks_n_freq, Pyy_id_mean_pks_n_freq] = [f for f in mean_peaks_f] 
+def save_data(prefix, bad_xy, fa_xys, PSDs, int_PSDs, peaks_f, corr_locs):
+    '''Save all kinds of data to .h5 file as groups'''
+    keys = [
+'environment/beam_current', 'environment/beam_bunch', 'environment/bpm_prefix', 
+'environment/bpm_location', 'environment/bpm_badx',   'environment/bpm_bady',
+'FA/X', 'FA/Y', 'FA/S',  
+'averaged_PSDs/x_dispersive', 'averaged_PSDs/x_non-dispersive',
+'averaged_PSDs/x_ID',         'averaged_PSDs/y', 'averaged_PSDs/y_ID',
+'integral_PSDs/x_dispersive', 'integral_PSDs/x_non-dispersive',
+'integral_PSDs/x_ID',         'integral_PSDs/y', 'integral_PSDs/y_ID',
+'peak_frequencies/x_dispersive', 'peak_frequencies/x_non-dispersive',
+'peak_frequencies/x_ID',         'peak_frequencies/y', 'peak_frequencies/y_ID',
+'corrector_locations/x_dispersive', 'corrector_locations/x_non-dispersive',
+'corrector_locations/x_ID', 'corrector_locations/y', 'corrector_locations/y_ID']
 
     beam_cur=caget('SR:C03-BI{DCCT:1}I:Total-I')
     n_bunch=caget('SR:C16-BI{FPM:1}NbrBunches-I') 
 
-    values = [x_all, y_all, s_all] + [beam_cur, n_bunch, prefix, s_BPM] \
-    + [badx_pvname, bady_pvname] \
-    + [Pxx_disp_mean, Pxx_non_disp_mean, Pxx_id_mean, Pyy_mean, Pyy_id_mean] \
-    + [int_Pxx_disp_mean, int_Pxx_non_disp_mean, int_Pxx_id_mean,
-       int_Pyy_mean, int_Pyy_id_mean]\
-    + [Pxx_disp_mean_pks_n_freq, Pxx_non_disp_mean_pks_n_freq, Pxx_id_mean_pks_n_freq, 
-       Pyy_mean_pks_n_freq, Pyy_id_mean_pks_n_freq]
-    
-    attrs = ['faX', 'faY', 'faS', 'beamCur', 'nBunch', 'prefix', 's',
-    'badX', 'badY', 'xDispMeanPSD', 'xNonDispMeanPSD', 'xIDMeanPSD', 
-    'yMeanPSD', 'yIDMeanPSD', 'intXDispMeanPSD', 'intXNonDispMeanPSD',
-    'intXIDMeanPSD', 'intYMeanPSD', 'intYIDMeanPSD', 'xDispMeanPeaksFreq',
-    'xNonDispMeanPeaksFreq', 'xIDMeanPeaksFreq', 'yMeanPeaksFreq', 'yIDMeanPeaksFreq']
-    
-    #file_name = path + "bpm-fa-psd_" + time.strftime("%Y%b%d-%H%M%S") + ".h5"
-    file_name = str(path) + "bpm-fa-psd_" + time.strftime("%Y%b%d") + ".h5"
-    try:
-        with h5py.File(file_name, 'w') as f:
-            for (attr, value) in zip(attrs, values):
-                f[attr] = value        
-    except Exception as e:
-        print("{}: {}".format(type(e),e))
-        return
+    #How to handle a list of strings in Python 3:
+    #see https://github.com/h5py/h5py/issues/892
+    prefix = np.array(prefix, dtype='S')
+    [badx, bady] = [bad for bad in bad_xy]
+    #print(badx) #['SR:C16-APHLA{BPM:6}PSD:BadX-Cmd', ...]
+    badx = np.array(badx, dtype='S')
+    #print(badx) #[b'SR:C16-APHLA{BPM:6}PSD:BadX-Cmd' b...]
+    bady = np.array(bady, dtype='S')
 
-    print("%s: data saved in %s"%(datetime.datetime.now(), file_name))
+    values =  [beam_cur, n_bunch, prefix, s_BPM,badx, bady] \
+            + [fa for fa in fa_xys] \
+            + [psd for psd in PSDs] \
+            + [psd for psd in int_PSDs] \
+            + [f for f in peaks_f] \
+            + [loc for loc in corr_locs]
+
+    #path = '/epics/data/bpm_psd_data/' #the directory where .h5 file is saved
+    path = caget('SR-APHLA{BPM}PSD:Path-SP')
+    file_name = str(path) + "bpm-fa-psd_" + time.strftime("%Y%b%d-%Hh%Mm") + ".h5"
+    #file_name = str(path) + "test" + time.strftime("%Y%b%d-%Ham") + ".h5"
+    hf = h5py.File(file_name, 'w')
+    for (key, value) in zip (keys, values):
+        hf[key] = value
+        hf[key].attrs['beam_current'] = beam_cur
+        hf[key].attrs['beam_bunches'] = n_bunch
+ 
+    hf.close()
+    print("%s: %d types of data are saved in %s"%(datetime.datetime.now(),
+                                                len(keys), file_name))
     caput('SR-APHLA{BPM}PSD:h5Name-Wf', file_name, datatype=DBR_CHAR_STR)
