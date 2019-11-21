@@ -79,10 +79,10 @@ s_BPM=np.array([
         752.305  ,  754.538  ,  759.408  ,  761.972  ,  769.149  ,
         771.713  ,  777.463  ,  779.695  ,  784.498  ,  787.023  ])
 
-def save_data(fa_xyas, prefix, bad_xy, mean_PSDs, int_mean_PSDs, mean_peaks_f):
+def save_data(fa_xys, prefix, bad_xy, mean_PSDs, int_mean_PSDs, mean_peaks_f, locs):
     '''Save all kinds of live data to .h5 file'''
     #x_all, y_all, a_all, s_all = fa_xyas[0], fa_xyas[1], fa_xyas[2], fa_xyas[3];
-    [x_all, y_all, a_all, s_all] = [fa for fa in fa_xyas]
+    [x_all, y_all, s_all] = [fa for fa in fa_xys]
 
     #How to handle a list of strings in Python 3: https://github.com/h5py/h5py/issues/892
     prefix = np.array(prefix, dtype='S')
@@ -104,7 +104,7 @@ def save_data(fa_xyas, prefix, bad_xy, mean_PSDs, int_mean_PSDs, mean_peaks_f):
     beam_cur=caget('SR:C03-BI{DCCT:1}I:Total-I')
     n_bunch=caget('SR:C16-BI{FPM:1}NbrBunches-I') 
 
-    values = [x_all, y_all, a_all, s_all] + [beam_cur, n_bunch, prefix, s_BPM] \
+    values = [x_all, y_all, s_all] + [beam_cur, n_bunch, prefix, s_BPM] \
     + [badx_pvname, bady_pvname] \
     + [Pxx_disp_mean, Pxx_non_disp_mean, Pxx_id_mean, Pyy_mean, Pyy_id_mean] \
     + [int_Pxx_disp_mean, int_Pxx_non_disp_mean, int_Pxx_id_mean,
@@ -112,7 +112,7 @@ def save_data(fa_xyas, prefix, bad_xy, mean_PSDs, int_mean_PSDs, mean_peaks_f):
     + [Pxx_disp_mean_pks_n_freq, Pxx_non_disp_mean_pks_n_freq, Pxx_id_mean_pks_n_freq, 
        Pyy_mean_pks_n_freq, Pyy_id_mean_pks_n_freq]
     
-    attrs = ['faX', 'faY', 'faA', 'faS', 'beamCur', 'nBunch', 'prefix', 's',
+    attrs = ['faX', 'faY', 'faS', 'beamCur', 'nBunch', 'prefix', 's',
     'badX', 'badY', 'xDispMeanPSD', 'xNonDispMeanPSD', 'xIDMeanPSD', 
     'yMeanPSD', 'yIDMeanPSD', 'intXDispMeanPSD', 'intXNonDispMeanPSD',
     'intXIDMeanPSD', 'intYMeanPSD', 'intYIDMeanPSD', 'xDispMeanPeaksFreq',

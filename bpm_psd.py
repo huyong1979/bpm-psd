@@ -65,7 +65,7 @@ def create_pvlist(str1, str2):
 #fa_x: FA data in X  plane; a list of waveform PVs
 fa_x =         create_pvlist('BI', 'FA-X')
 fa_y =         create_pvlist('BI', 'FA-Y')     
-fa_a =         create_pvlist('BI', 'FA-A') 
+#fa_a =         create_pvlist('BI', 'FA-A') 
 fa_s =         create_pvlist('BI', 'FA-S')   
 prefix =       create_pvlist('BI', '')
 machine_type = create_pvlist('BI', 'Loc:Machine-SP') #should be "5"
@@ -136,9 +136,9 @@ if caget('SR-APHLA{BPM}PSD:LiveData-Cmd') == 1: # Data Source: Live Data
     update_status("Finally read and process live data...")
     x_all = caget(fa_x, count=fa_recordLen)
     y_all = caget(fa_y, count=fa_recordLen)
-    a_all = caget(fa_a, count=fa_recordLen)
+    #a_all = caget(fa_a, count=fa_recordLen)
     s_all = caget(fa_s, count=fa_recordLen)
-    fa_xyas = [x_all, y_all, a_all, s_all]
+    fa_xys = [x_all, y_all, s_all]
 else: # Data Source: Data from file
     file_name=caget('SR-APHLA{BPM}PSD:File4DataSource-SP',datatype=DBR_CHAR_STR)
     update_status("read data from " + file_name + " and process the data ...")
@@ -497,11 +497,12 @@ pvs = [] # a list of a list of waveforms (a list of 2D array)
 for t in ['X_DISP','X_NON_DISP','X_ID','Y','Y_ID']: # five types
   pvs.append(['SR-APHLA{CORR}Noise:'+t+'_Freq'+str(n)+'-Wf' for n in [0,1,2,3,4]])
 #values: a list of 2D array (5*(5*90))
-values=[np.transpose(corr_disp_mean_pks_x),np.transpose(corr_non_disp_mean_pks_x), 
-        np.transpose(corr_id_mean_pks__x), np.transpose(corr_mean_pks_y), 
-        np.transpose(corr_id_mean_pks_y)]
+corr_locs = [
+    np.transpose(corr_disp_mean_pks_x), np.transpose(corr_non_disp_mean_pks_x), 
+    np.transpose(corr_id_mean_pks__x),  np.transpose(corr_mean_pks_y), 
+    np.transpose(corr_id_mean_pks_y) ]
 #caput(pvs, values) does not work because caput only works on 1D/2D array   
-for (pv, value) in zip(pvs, values):
+for (pv, value) in zip(pvs, corr_locs):
     caput(pv, value)
 
 # can put any frequencies that we are interested to find the locations
@@ -515,7 +516,7 @@ corr_arb_x, f_out_arb_x = locate_n_peaks(corr_all_x, f, f_arb)
 # save all types of live data to .h5 file:
 if caget('SR-APHLA{BPM}PSD:LiveData-Cmd') == 1: # Data Source: Live Data
     update_status("Saving data to .h5 file...")
-    save_data(fa_xyas, prefix, bad_xy, mean_PSDs, int_mean_PSDs, mean_peaks_f)
+    save_data(fa_xys,prefix,bad_xy,mean_PSDs,int_mean_PSDs,mean_peaks_f,corr_locs)
 
 t = time.time() - t0
 update_status("Done! Waiting for a new cycle..." )
