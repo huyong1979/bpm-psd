@@ -155,8 +155,12 @@ else: # Data Source: Data from file
     if not os.path.isfile(file_name):
         update_status_and_exit("Error: can not read " + file_name)
     fid = h5py.File(file_name, 'r')
-    x_all = fid.get('faX')
-    y_all = fid.get('faY')
+    try:
+        x_all = fid['FA/X'] # new format in .h5 
+        y_all = fid['fA/Y']
+    except:
+        x_all = fid.get('faX')
+        y_all = fid.get('faY')
     fid.close
     
 x_all = np.asarray(x_all)[:,0:fa_recordLen]/1000.0 #unit: from nm to um
@@ -164,8 +168,7 @@ y_all = np.asarray(y_all)[:,0:fa_recordLen]/1000.0
 
 # generate disp, non-disp, id bpm index (start from 0)
 size = x_all.shape
-disp = []
-non_disp = []
+disp, non_disp= [], []
 for i in range(1,181):
     if np.mod(i,6) == 3 or np.mod(i,6) == 4:
         disp.append(i-1)
@@ -176,12 +179,10 @@ norm_bpm = range(0,180)
 #print(len(disp), len(non_disp), len(id_bpm)) #60, 120, 43
 
 # initialize 
-#rf = 499.68e6 # would be good to read from PV
-rf = caget('RF{Osc:1}Freq:I')
-fs = rf/1320/38
-n = x_all.shape
-r = n[0] # number of BPMs (rows 223)
-c = n[1] # number of samples (columns 100000)
+#rf = 499.68e6 # it would be good to read from PV
+fs = caget('RF{Osc:1}Freq:I')/1320/38
+r = size[0] # number of BPMs (rows 223)
+c = size[1] # number of samples (columns 100000)
 n_perseg = c #samples per segment in signal.welch
 df = fs/n_perseg #resolution: ~0.1Hz
 #start and end frequencies for finding peaks
@@ -194,17 +195,14 @@ prom_dist = caget('SR-APHLA{BPM}PSD:PromDist-SP') #distance between peaks (Hz)
 dist = int(math.ceil(prom_dist/df))
 n_max = 5 # get 5 peaks for now
 
-# pre-allowcate output
+# pre-allocate output
 Pxx_all = [] #individual BPM PSD in X plane
 Pyy_all = []
 pks_freq_x = [0]*r #peak's frequency in X plane; no PV for individual PSD peak 
 pks_freq_y = [0]*r
 pks_hight_x = [0]*r #peak's amplitude/height
 pks_hight_y = [0]*r
-pks_n_freq_x = [0]*r
-pks_n_freq_y = [0]*r
-pks_n_hight_x = [0]*r
-pks_n_hight_y = [0]*r
+pks_n_freq_x,pks_n_freq_y,pks_n_hight_x,pks_n_hight_y= [0]*r,[0]*r,[0]*r,[0]*r 
 
 #main loop: PSD calculation
 def get_PSD_and_peaks(fa_data, prom):
@@ -515,8 +513,7 @@ corr_arb_x, f_out_arb_x = locate_n_peaks(corr_all_x, f, f_arb)
 # save all types of live data to .h5 file at ~ 9am everyday:
 hour_min = time.strftime("%H, %M")
 save_data = caget('SR-APHLA{BPM}PSD:SaveData-Cmd')
-if live_data==1 and ('09, 00'<=hour_min<='09, 03' or save_data==1):
-    caput('SR-APHLA{BPM}PSD:SaveData-Cmd', 0)
+if live_data == 1 and ('09, 00' <= hour_min <= '09, 03' or save_data == 1):
     from save_data import save_data
     update_status("Saving data to .h5 file...")
     save_data(prefix,bad_xy,fa_xys,mean_PSDs,int_mean_PSDs,mean_peaks_f,corr_locs)
@@ -524,5 +521,5 @@ if live_data==1 and ('09, 00'<=hour_min<='09, 03' or save_data==1):
 t = time.time() - t0
 update_status("Done! Waiting for a new cycle..." )
 caput('SR-APHLA{BPM}PSD:LoopTime-I', t)
-if caget('SR-APHLA{BPM}PSD:LiveData-Cmd') == 1: #update TS only for live data
+if live_data == 1: #update TS only for live data
     caput('SR-APHLA{BPM}PSD:Timestamp-Sts', str(datetime.datetime.now()))

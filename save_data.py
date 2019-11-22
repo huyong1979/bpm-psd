@@ -122,15 +122,20 @@ def save_data(prefix, bad_xy, fa_xys, PSDs, int_PSDs, peaks_f, corr_locs):
 
     #path = '/epics/data/bpm_psd_data/' #the directory where .h5 file is saved
     path = caget('SR-APHLA{BPM}PSD:Path-SP')
-    file_name = str(path) + "bpm-fa-psd_" + time.strftime("%Y%b%d-%Hh%Mm") + ".h5"
+    ts_format = "%Y%b%d-%Hh" #default timestamp: up to hour
+    if caget('SR-APHLA{BPM}PSD:SaveData-Cmd') == 1:
+        ts_format = "%Y%b%d-%Hh%Mm" #TS: up to minute for manual saving
+        caput('SR-APHLA{BPM}PSD:SaveData-Cmd', 0)
+    file_name = str(path) + "bpm-fa-psd_" + time.strftime(ts_format) + ".h5"
     #file_name = str(path) + "test" + time.strftime("%Y%b%d-%Ham") + ".h5"
+
     hf = h5py.File(file_name, 'w')
     for (key, value) in zip (keys, values):
         hf[key] = value
         hf[key].attrs['beam_current'] = beam_cur
         hf[key].attrs['beam_bunches'] = n_bunch
- 
     hf.close()
+
     print("%s: %d types of data are saved in %s"%(datetime.datetime.now(),
                                                 len(keys), file_name))
     caput('SR-APHLA{BPM}PSD:h5Name-Wf', file_name, datatype=DBR_CHAR_STR)
