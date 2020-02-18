@@ -86,7 +86,7 @@ import datetime
 from cothread.catools import caget, caput, DBR_CHAR_STR
 import h5py
 
-def save_data(prefix, bad_xy, fa_xys, PSDs, int_PSDs, peaks_f, corr_locs):
+def save_data(prefix,bad_xy,fa_xys,PSDs,int_PSDs,peaks_f,corr_locs,hourly=False):
     '''Save all kinds of data to .h5 file as groups'''
     keys = [
 'environment/beam_current', 'environment/beam_bunch', 'environment/bpm_prefix', 
@@ -121,11 +121,14 @@ def save_data(prefix, bad_xy, fa_xys, PSDs, int_PSDs, peaks_f, corr_locs):
             + [loc for loc in corr_locs]
 
     #path = '/epics/data/bpm_psd_data/' #the directory where .h5 file is saved
-    path = caget('SR-APHLA{BPM}PSD:Path-SP')
+    path = caget('SR-APHLA{BPM}PSD:Path-SP') 
     ts_format = "%Y%b%d-%Hh" #default timestamp: up to hour
     if caget('SR-APHLA{BPM}PSD:SaveData-Cmd') == 1:
         ts_format = "%Y%b%d-%Hh%Mm" #TS: up to minute for manual saving
         caput('SR-APHLA{BPM}PSD:SaveData-Cmd', 0)
+    if hourly:
+        path = path + "hourly/"
+        ts_format = "%Hh"
     file_name = str(path) + "bpm-fa-psd_" + time.strftime(ts_format) + ".h5"
     #file_name = str(path) + "test" + time.strftime("%Y%b%d-%Ham") + ".h5"
 

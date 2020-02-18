@@ -518,6 +518,15 @@ if live_data == 1 and ('09, 00' <= hour_min <= '09, 03' or save_data == 1):
     update_status("Saving data to .h5 file...")
     save_data(prefix,bad_xy,fa_xys,mean_PSDs,int_mean_PSDs,mean_peaks_f,corr_locs)
 
+# save all types of live data to .h5 file every hour for one day (only 24 files):
+minute = time.strftime("%M")
+if live_data == 1 and ('00' <= minute <= '03' ):
+#TypeError: 'ca_int' object is not callable; have to do the "import" here, why? 
+    from save_data import save_data
+    update_status("Saving data to .h5 file every hour...")
+    save_data(prefix, bad_xy, fa_xys, mean_PSDs, int_mean_PSDs, mean_peaks_f, 
+              corr_locs, hourly=True)
+
 t = time.time() - t0
 update_status("Done! Waiting for a new cycle..." )
 caput('SR-APHLA{BPM}PSD:LoopTime-I', t)
