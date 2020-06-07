@@ -468,6 +468,33 @@ Pyy_mean_pks_n_freq,          np.sqrt(Pyy_mean_pks_n_hight),
 Pyy_id_mean_pks_n_freq,       np.sqrt(Pyy_id_mean_pks_n_hight)]
 caput(pvs, values)
 
+#06/06/2020: find peaks for frequency range 1Hz ~ 100Hz
+_if0 = int(math.ceil(1/df))
+_if1 = int(math.ceil(100/df))
+Pxx_disp_mean_pks_n_freq_,     Pxx_disp_mean_pks_n_hight_     = get_peaks(f, 
+  Pxx_disp_mean,     prom_x_disp,     dist_x_disp,     _if0,     _if1)
+Pxx_non_disp_mean_pks_n_freq_, Pxx_non_disp_mean_pks_n_hight_ = get_peaks(f, 
+  Pxx_non_disp_mean, prom_x_non_disp, dist_x_non_disp, _if0,     _if1)
+Pxx_id_mean_pks_n_freq_,       Pxx_id_mean_pks_n_hight_       = get_peaks(f, 
+  Pxx_id_mean,       prom_x_id,       dist_x_id,       _if0,     _if1)
+Pyy_mean_pks_n_freq_,          Pyy_mean_pks_n_hight_          = get_peaks(f, 
+  Pyy_mean,          prom_y,          dist_y,          _if0,     _if1)
+Pyy_id_mean_pks_n_freq_,       Pyy_id_mean_pks_n_hight_       = get_peaks(f, 
+  Pyy_id_mean,       prom_y_id,       dist_y_id,       _if0,     _if1)
+pvs = [
+'SR-APHLA{BPM}PSD:X_DISP1_MEAN_PKS_N_F-Wf',    'SR-APHLA{BPM}PSD:X_DISP1_MEAN_PKS_N_H-Wf',
+'SR-APHLA{BPM}PSD:X_NON_DISP1_MEAN_PKS_N_F-Wf','SR-APHLA{BPM}PSD:X_NON_DISP1_MEAN_PKS_N_H-Wf',
+'SR-APHLA{BPM}PSD:X_ID1_MEAN_PKS_N_F-Wf',      'SR-APHLA{BPM}PSD:X_ID1_MEAN_PKS_N_H-Wf',
+'SR-APHLA{BPM}PSD:Y1_MEAN_PKS_N_F-Wf',         'SR-APHLA{BPM}PSD:Y1_MEAN_PKS_N_H-Wf',
+'SR-APHLA{BPM}PSD:Y_ID1_MEAN_PKS_N_F-Wf',      'SR-APHLA{BPM}PSD:Y_ID1_MEAN_PKS_N_H-Wf']
+values = [
+Pxx_disp_mean_pks_n_freq_,     np.sqrt(Pxx_disp_mean_pks_n_hight_), 
+Pxx_non_disp_mean_pks_n_freq_, np.sqrt(Pxx_non_disp_mean_pks_n_hight_),
+Pxx_id_mean_pks_n_freq_,       np.sqrt(Pxx_id_mean_pks_n_hight_),
+Pyy_mean_pks_n_freq_,          np.sqrt(Pyy_mean_pks_n_hight_),
+Pyy_id_mean_pks_n_freq_,       np.sqrt(Pyy_id_mean_pks_n_hight_)]
+caput(pvs, values)
+
 mean_peaks_f = [Pxx_disp_mean_pks_n_freq, Pxx_non_disp_mean_pks_n_freq, 
 Pxx_id_mean_pks_n_freq, Pyy_mean_pks_n_freq, Pyy_id_mean_pks_n_freq]
 
